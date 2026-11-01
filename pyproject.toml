@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tvextremes"
+version = "0.1.0"
+description = "Time-varying extremes: replication of Müller & Watson (2024) for pseudo-data and ERA5"
+requires-python = ">=3.10"
+dependencies = ["numpy", "scipy"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools]
+packages = ["tvextremes"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
