@@ -160,6 +160,69 @@ and `cv_xi.csv`. `get_adjustment` prefers our own calibration where one exists a
 the authors' (`source = mw2024`). New designs, such as the 85-year ERA5 record, are calibrated
 with `scripts/calibrate_cv.py --k K --T T`.
 
+## Power study, Stage A: first results
+
+These results come from data drawn exactly from GEV_k, with known changes in µ, σ or ξ. The
+setup:
+
+- **Designs:** the 85-year ERA5 record with k = 1, 3 and 10 largest values per year, plus the
+  paper's two designs (k = 1, T = 194 and k = 30, T = 4).
+- **Baseline tail shapes:** ξ₀ = −0.2, 0, 0.2 and 0.5.
+- **Replications:** 2,000 per cell, with common random numbers across alternatives.
+- **Tests:** the paper's ξ̂-adjusted Nyblom test, the conventional GEV likelihood-ratio test for a
+  linear trend in location (χ²₁ critical value), and Mann–Kendall on the annual maxima.
+
+The full table, with nominal and size-adjusted power and the implied change in the 10- and
+100-year return levels, is `data/results/power_summary.csv`. The design is in
+`docs/power_study_plan.md`.
+
+**Size with no change** (target 5%, over the four ξ₀):
+
+| Test | Rejection rate |
+|---|---|
+| Nyblom | 3.9–5.7% |
+| Linear-trend LR | 4.9–6.7% |
+| Mann–Kendall | 3.9–5.7% |
+
+The linear-trend LR is the most often over-sized, because the χ² approximation is loose at these
+sample sizes. Mann–Kendall cannot reject at T = 4.
+
+**Power at ξ₀ = 0** (nominal rejection rate: Nyblom / linear-trend LR / Mann–Kendall). Changes in
+µ are in units of σ over the record. Changes in σ are in log points, and changes in ξ are
+absolute.
+
+| Change | k=1, T=85 | k=3, T=85 | k=10, T=85 | k=1, T=194 |
+|---|---|---|---|---|
+| µ linear, 0.5σ | .20/.30/.21 | .46/.64/.22 | .96/.99/.20 | .37/.54/.42 |
+| µ linear, 1σ | .59/.75/.63 | .98/1.0/.61 | 1.0/1.0/.60 | .94/.98/.94 |
+| µ step at 80% of record, 1σ | .46/.53/.54 | .95/.94/.52 | 1.0/1.0/.51 | .87/.89/.91 |
+| µ rise then fall, 1σ | .19/.07/.06 | .56/.06/.05 | 1.0/.05/.06 | .43/.06/.06 |
+| µ random walk, 1σ | .47/.51/.45 | .71/.69/.46 | .90/.82/.45 | .65/.65/.60 |
+| σ linear, 0.4 | .18/.09/.07 | .71/.61/.06 | 1.0/1.0/.07 | .41/.09/.07 |
+| σ linear, 0.8 | .63/.15/.10 | 1.0/.99/.09 | 1.0/1.0/.08 | .95/.26/.12 |
+| ξ linear, 0.2 | .09/.07/.06 | .17/.13/.05 | 1.0/1.0/.06 | .13/.07/.06 |
+| ξ linear, 0.4 | .17/.08/.07 | .59/.38/.06 | 1.0/1.0/.07 | .39/.10/.08 |
+
+What the table shows:
+
+- **For a linear trend in location**, the linear-trend LR is the most powerful test, as it should
+  be. Its edge over Nyblom is modest, and part of it comes from being over-sized.
+- **For any other kind of change**, Nyblom is better or much better. A rise-then-fall change and a
+  change in scale or tail are almost invisible to both trend tests at k = 1.
+- **Annual maxima alone (k = 1) barely detect a change in tail shape.** A rise in ξ of 0.4 raises
+  the 100-year return level by about 4.5σ, yet even the best test detects it less than 20% of the
+  time.
+- **Using more values per year helps enormously in this idealized setting.** With k = 10, almost
+  every alternative is detected. Mann–Kendall uses only the annual maxima and does not benefit.
+  The extra information comes from the lower order statistics, and in real daily data those are
+  the values least likely to follow the GEV_k model (heatwave clusters, seasonality). Stage B
+  tests whether the gain survives.
+
+Calibration note for k = 10, T = 85: on two independent validation sets (seeds 7 and 8), the
+Nyblom coefficients reject 5.3–5.5% at ξ ≈ −0.3 to −0.1, which is slightly above 5%. A
+recalibration with a new seed (2027) gave almost the same coefficients, so the excess, of about
+0.3 percentage points, is a small real bias rather than noise in the fit.
+
 ## Did Müller and Watson validate with pseudo-data?
 
 Only in a narrow sense. Simulation appears in two places.
