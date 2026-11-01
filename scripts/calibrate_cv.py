@@ -74,6 +74,12 @@ def main():
         if args.validate_seed is not None:
             grids = {"grid": sim.grid, "midpoints": midpoints(sim.grid)}
             coefs = {"ours": a}
+            if args.no_save:          # compare with our stored calibration (e.g. another seed)
+                try:
+                    coefs["stored"] = cv.get_adjustment(test, args.k, args.T, args.alpha,
+                                                        source="tvextremes")
+                except KeyError:
+                    pass
             try:
                 coefs["mw2024"] = cv.get_adjustment(test, args.k, args.T, args.alpha, source="mw2024")
             except KeyError:

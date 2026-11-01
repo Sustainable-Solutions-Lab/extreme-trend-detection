@@ -63,6 +63,8 @@ def main():
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--workers", type=int, default=None)
     p.add_argument("--summarize-only", action="store_true")
+    p.add_argument("--skip-existing", action="store_true",
+                   help="reuse saved .npz files instead of re-simulating them (e.g. after an interruption)")
     p.add_argument("--nice", type=int, default=19)
     args = p.parse_args()
     if hasattr(os, "nice") and args.nice > 0:
@@ -74,7 +76,7 @@ def main():
         k, T = (int(v) for v in design.lower().split("x"))
         for xi0 in args.xi0:
             path = npz_path(k, T, xi0)
-            if args.summarize_only:
+            if args.summarize_only or (args.skip_existing and path.exists()):
                 if not path.exists():
                     print(f"missing {path.name}, skipped")
                     continue
