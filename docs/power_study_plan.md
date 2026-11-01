@@ -103,9 +103,11 @@ This needs the Stan model and is not part of this study.
 A time-reversal check belongs here too: fit the model to the data in reverse order and check that
 the estimated paths come out reversed. For the constant-parameter fits, Nyblom, trend LR and
 Mann–Kendall this holds exactly and is already a unit test (`tests/test_power.py`). For the
-Bayesian model it holds only if the prior is symmetric in time. A random-walk prior anchored at
-the first period is not, so any asymmetry seen will come either from the prior or from a bug, and
-the check tells the two apart.
+Bayesian model it should also hold. The authors' Stan code subtracts each random walk's own
+mean, so the level parameters are time averages, not first-period values. Their priors are flat
+or symmetric, and the random-walk increments are i.i.d. Gaussian. Together these make the prior
+symmetric in time. So reversed data should give reversed posterior paths, up to MCMC noise, and
+any systematic asymmetry would point to a bug.
 
 ## Code and outputs
 

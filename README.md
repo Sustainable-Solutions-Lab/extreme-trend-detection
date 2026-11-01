@@ -42,15 +42,24 @@ tvextremes/
                   and fast gradient-based fits), LR statistic
   nyblom.py       Nyblom L_T stability statistic and Hessian-based information
   critical_values.py  Monte Carlo calibration of the xi_hat-adjusted critical values; lookup
+  pseudo.py       pseudo-data: GEV_k panels with known parameter paths (linear, accelerating, steps,
+                  hump, random walk in mu, sigma or xi)
+  trend_tests.py  baselines: GEV with a linear trend in location (LR test), Mann-Kendall
+  power.py        power study: simulate a design, nominal and size-adjusted rejection rates
 scripts/
   calibrate_cv.py      run a calibration for given (k, T) and store it in data/calibration
   import_mw2024_cvs.py copy the authors' coefficients into data/calibration
+  power_study.py       run the Stage A power study and write data/results/power_summary.csv
 tests/
   test_likelihood.py       self-contained checks (scipy cross-checks, normalization, scores, simulation)
   test_critical_values.py  calibration machinery
+  test_power.py            pseudo-data generator, trend tests, time-reversal invariance
   test_replication.py      reproduces Tables 1 and 2 of the paper from the authors' data
+docs/
+  power_study_plan.md      design of the pseudo-data power and robustness study
 data/
   calibration/    critical-value tables (committed)
+  results/        small summary tables of study results (committed)
   input/, output/ raw inputs and generated results (not in git)
 external/         authors' replication archive (not in git; see below)
 ```
@@ -108,6 +117,49 @@ normalized), largest and smallest S&P 500 returns, and city and firm sizes with 
 
 The critical-value coefficients for these checks come from the authors' CSV files.
 
+## Critical values
+
+The paper's tests reject when adj(ξ̂)·stat > 1, with adj(ξ̂) = exp(a₀ + a₁ξ̂ + a₂ξ̂²) chosen by
+simulation so that the test rejects at most 5% of the time for every true ξ on a grid (Appendix
+B). `critical_values.py` follows the authors' Fortran: common random numbers across the ξ grid,
+fits started at the truth, a kernel-smoothed linex objective that penalizes over-rejection, and a
+final shift of a₀ so that the worst grid point rejects exactly 5%.
+
+**Draws.** The authors used N = 10,000 panels per grid point. We use N = 40,000 for the fit
+(seed 2026) and check the result on 10,000 independent draws (seed 7), both at the grid points and
+at the midpoints between them. The Monte Carlo standard error of a 5% rejection rate is 0.22
+percentage points at N = 10,000 and 0.11 at N = 40,000.
+
+**Results** for the paper's two k-largest designs: worst-case rejection rate on the independent
+validation draws, over grid points and midpoints (target 5%).
+
+| Test | k = 1, T = 194: ours | authors' | k = 30, T = 4: ours | authors' |
+|---|---|---|---|---|
+| Nyblom L_T | 4.8% | 4.6% | 4.7% | 5.3% |
+| q₀.₉ = q₀ | 4.9% | 5.0% | 5.0% | 5.1% |
+| µ = σ/ξ (Pareto) | 5.2% | 5.0% | 5.1% | 5.4% |
+| Zipf | 5.2% | 5.2% | 5.1% | 4.9% |
+
+The ξ = ξ₀ test has no nuisance parameter, so its critical value is simply the 95% quantile of LR
+at each ξ₀. Ours are 1.93–2.06 for k = 1, T = 194 and 1.95–2.19 for k = 30, T = 4. They differ
+from the authors' by up to 0.07, and the differences have a consistent sign over stretches of the
+grid: ours are lower for ξ₀ < 0.5 at k = 1, and higher for ξ₀ > 0.4 at k = 30. The Monte Carlo
+standard error of one quantile is about 0.04 at the authors' N = 10,000. Common random numbers
+make neighbouring grid points share their errors, so this is probably noise, but it has not been
+confirmed. The calibration script does not yet validate the ξ test on independent draws, and
+doing so would settle it.
+
+Both sets of coefficients control size to within Monte Carlo error. Most grid points reject less
+than 5%, because the three-coefficient curve cannot fit the rejection rate exactly at every ξ and
+the worst point is set to 5%. For the Nyblom test at k = 30 the lowest grid point rejects only
+3.5%. The remaining error is far below what we expect from departures from the GEV model, which
+the pseudo-data study measures.
+
+All rows, with source, N, seed and achieved size, are in `data/calibration/cv_adjustment.csv`
+and `cv_xi.csv`. `get_adjustment` prefers our own calibration where one exists and falls back to
+the authors' (`source = mw2024`). New designs, such as the 85-year ERA5 record, are calibrated
+with `scripts/calibrate_cv.py --k K --T T`.
+
 ## Did Müller and Watson validate with pseudo-data?
 
 Only in a narrow sense. Simulation appears in two places.
@@ -149,11 +201,13 @@ data:
 
 ## Roadmap
 
-1. Critical-value calibration in Python (Appendix B), so that we can handle (k, T) combinations
-   the authors did not tabulate. The template is `Matlab/Compute_a0a1a2_CVFunction.m`.
-2. Nyblom stability test and the joint L* test.
-3. A pseudo-data generator with known parameter paths, both directly from GEV_k and from parent
-   distributions with optional serial dependence. Use it to run the size and power studies above.
+1. ~~Critical-value calibration in Python (Appendix B)~~ done for k largest; exceedance
+   (Bonferroni) calibration still to do.
+2. ~~Nyblom stability test~~ done; the joint L* test still to do.
+3. Pseudo-data size and power studies (`docs/power_study_plan.md`). Stage A (exact GEV_k data with
+   known paths, compared with linear-trend LR and Mann-Kendall) is built and running. Stage B
+   (parent distributions such as normal, Student-t, raised cosine and tanh-normal, with serial
+   dependence and seasonality) is next.
 4. A TVP-GEV/exceedance model in Stan (via cmdstanpy), adapted from the authors' models, with
    importance reweighting and Bayes factors. Check that it recovers known paths.
 5. ERA5: build k-largest or exceedance panels per grid cell or region, decluster to handle serial
