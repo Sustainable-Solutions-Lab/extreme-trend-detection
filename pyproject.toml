@@ -7,7 +7,7 @@ name = "tvextremes"
 version = "0.1.0"
 description = "Time-varying extremes: replication of Müller & Watson (2024) for pseudo-data and ERA5"
 requires-python = ">=3.10"
-dependencies = ["numpy", "scipy"]
+dependencies = ["numpy", "scipy", "threadpoolctl"]
 
 [project.optional-dependencies]
 dev = ["pytest"]

@@ -77,3 +77,19 @@ def test_table1(app):
     stat4 = adj4 * lr_statistic(unr, _fit(d, pareto=True, fix_xi=1.0))
     assert stat3 == pytest.approx(lr_pareto, abs=0.006)
     assert stat4 == pytest.approx(lr_zipf, abs=0.006 * max(1, lr_zipf))
+
+
+# Table 2: xi_hat-adjusted Nyblom statistics (authors' output files, 2 decimals)
+TABLE2 = {"Weather": 11.58, "Weather_norm": 4.24, "Returns_Large": 1.63, "Returns_Small": 1.36,
+          "City": 1.11, "Firm": 0.73}
+
+
+@pytest.mark.parametrize("app", list(TABLE2))
+def test_table2_nyblom(app):
+    from tvextremes.nyblom import nyblom_test
+    d = load(app)
+    fit = _fit(d)
+    data = d["Y"] if "Y" in d else d["X"]
+    L = nyblom_test(data, fit, tau=d.get("tau"))
+    stat = _cv_adjust(f"cvx_test0_{d['cv']}.csv", fit.xi) * L
+    assert stat == pytest.approx(TABLE2[app], abs=0.006)

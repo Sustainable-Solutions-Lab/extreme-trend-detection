@@ -95,10 +95,11 @@ def _core_logpdf(obs, cpoint, mu, sigma, xi, extended=False):
     k = valid.sum(axis=1)
     zc = (cpoint - mu) / sigma
     z = (np.where(valid, obs, 0.0) - mu[:, None]) / sigma[:, None]
-    hz = np.where(valid, hfun(z, xi[:, None]), 0.0)
-    hc = hfun(zc, xi)
+    with np.errstate(over="ignore", invalid="ignore"):
+        hz = np.where(valid, hfun(z, xi[:, None]), 0.0)
+        hc = hfun(zc, xi)
     with np.errstate(invalid="ignore", over="ignore", divide="ignore"):
-        ll = -k * np.log(sigma) - np.exp(hc) + (1.0 + xi) * hz.sum(axis=1)
+        ll = -k * np.log(sigma) - np.exp(hc) + (1.0 + xi) * np.sum(hz, axis=1)
     bad = (sigma <= 0) | np.isnan(ll)
     return np.where(bad, -np.inf, ll)
 
@@ -165,7 +166,8 @@ def gev_logpdf(X, mu, sigma, xi, extended=False):
 
 def gev_loglik(X, mu, sigma, xi):
     """Panel log-likelihood sum_t ln f_GEV(X_t | mu, sigma, xi)."""
-    return float(np.sum(gev_logpdf(X, mu, sigma, xi)))
+    with np.errstate(over="ignore", invalid="ignore"):   # far outside the support -> -inf
+        return float(np.sum(gev_logpdf(X, mu, sigma, xi)))
 
 
 def gev_score(X, mu, sigma, xi):
@@ -203,7 +205,8 @@ def exceedance_logpdf(Y, tau, mu, sigma, xi, extended=False):
 
 def exceedance_loglik(Y, tau, mu, sigma, xi):
     """Panel log-likelihood for exceedances."""
-    return float(np.sum(exceedance_logpdf(Y, tau, mu, sigma, xi)))
+    with np.errstate(over="ignore", invalid="ignore"):
+        return float(np.sum(exceedance_logpdf(Y, tau, mu, sigma, xi)))
 
 
 def exceedance_score(Y, tau, mu, sigma, xi):

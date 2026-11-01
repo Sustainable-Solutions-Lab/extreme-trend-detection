@@ -4,10 +4,19 @@ Restrictions (paper §2.2.3), selected by keyword:
 
 * ``fix_xi=xi0``            H0: xi = xi0
 * ``quantile=(q0, p)``      H0: p-quantile of GEV_1 equals q0 (the paper uses p = 0.9)
-* ``pareto=True``           H0: mu = sigma/xi with xi >= eps (pure Pareto tail; eps = 0.03)
+* ``pareto=True``           H0: mu = sigma/xi (pure Pareto tail)
 * ``pareto=True, fix_xi=1`` H0: mu = sigma/xi and xi = 1 (Zipf's law)
 
-The unrestricted space is Theta_1 = {sigma > 0, xi > -0.99}.
+The unrestricted space is Theta_1 = {sigma > 0, xi > -0.99}. Under the Pareto null the paper
+restricts xi >= eps = 0.03; in the authors' code that value is the lower end of the xi grid used
+for size control, while the restricted fit itself is bounded at xi >= 0.01 (Fortran) or not at all
+(MATLAB). We follow the Fortran code, which produced the published critical values.
+
+Two fitting routes:
+
+* ``fit_gev`` / ``fit_exceedance``: robust multi-start Nelder-Mead, for real data.
+* ``fit_local``: a single gradient-based (L-BFGS-B) fit from a given start, with Nelder-Mead
+  fallback. Much faster; used for Monte Carlo where the true parameters are a good start.
 """
 
 from __future__ import annotations
@@ -19,9 +28,11 @@ from scipy.optimize import minimize
 
 from . import likelihood as lk
 
-XI_MIN = -0.99      # lower bound on xi in Theta_1
-PARETO_EPS = 0.03   # xi >= eps under the Pareto null
+XI_MIN = -0.99        # lower bound on xi in Theta_1
+XI_MAX = 10.0         # upper bound used by the authors' Fortran optimizer
+PARETO_XI_LB = 0.01   # lower bound on xi for the restricted fit under mu = sigma/xi
 _START_XI = (-0.2, 0.1, 0.4, 0.8, 1.2)
+_BIG = 1e12
 
 
 @dataclass
@@ -41,17 +52,19 @@ class FitResult:
 
 
 class _Parametrization:
-    """Maps a free vector theta to (mu, sigma, xi) under a given restriction."""
+    """Maps a free vector theta to (mu, sigma, xi) under a given restriction, with its Jacobian."""
 
     def __init__(self, fix_xi=None, pareto=False, quantile=None):
         if quantile is not None and pareto:
             raise ValueError("quantile and pareto restrictions cannot be combined")
         self.fix_xi, self.pareto, self.quantile = fix_xi, pareto, quantile
-        self.xi_lo = PARETO_EPS if pareto else XI_MIN
+        self.xi_lo = PARETO_XI_LB if pareto else XI_MIN
+        self.free_xi = fix_xi is None
+        self.free_mu = not pareto and quantile is None
 
     def to_gev(self, theta):
         theta = list(theta)
-        xi = self.fix_xi if self.fix_xi is not None else theta.pop(0)
+        xi = theta.pop(0) if self.free_xi else self.fix_xi
         sigma = np.exp(theta.pop(0))
         if self.pareto:
             mu = sigma / xi
@@ -63,44 +76,76 @@ class _Parametrization:
         return mu, sigma, xi
 
     def from_gev(self, mu, sigma, xi):
-        theta = [] if self.fix_xi is not None else [max(xi, self.xi_lo + 0.01)]
+        theta = [min(max(xi, self.xi_lo + 0.01), XI_MAX - 0.01)] if self.free_xi else []
         theta.append(np.log(sigma))
-        if not self.pareto and self.quantile is None:
+        if self.free_mu:
             theta.append(mu)
         return np.array(theta, float)
 
+    def bounds(self):
+        b = [(self.xi_lo, XI_MAX)] if self.free_xi else []
+        b.append((None, None))
+        if self.free_mu:
+            b.append((None, None))
+        return b
+
     def feasible(self, xi):
-        return xi > self.xi_lo if not self.pareto else xi >= self.xi_lo
+        return self.xi_lo <= xi <= XI_MAX if self.pareto else self.xi_lo < xi <= XI_MAX
+
+    def chain(self, theta, g):
+        """Gradient wrt theta, given g = d loglik / d(xi, sigma, mu)."""
+        mu, sigma, xi = self.to_gev(theta)
+        g_xi, g_sigma, g_mu = g
+        if self.pareto:                   # mu = sigma/xi
+            d_xi = g_xi - g_mu * sigma / xi**2
+            d_logs = sigma * (g_sigma + g_mu / xi)
+        elif self.quantile is not None:   # mu = q0 - sigma c(xi)
+            q0, p = self.quantile
+            y = -np.log(p)
+            c = float(lk.gev_quantile(p, 0.0, 1.0, xi))
+            if abs(xi) < 1e-6:
+                dc = np.log(y) ** 2 / 2
+            else:
+                dc = (-np.log(y) * y ** (-xi) * xi - (y ** (-xi) - 1)) / xi**2
+            d_xi = g_xi - g_mu * sigma * dc
+            d_logs = sigma * (g_sigma - g_mu * c)
+        else:
+            d_xi = g_xi
+            d_logs = sigma * g_sigma
+        out = [d_xi] if self.free_xi else []
+        out.append(d_logs)
+        if self.free_mu:
+            out.append(g_mu)
+        return np.array(out, float)
+
+
+def _negll_fn(loglik_fn, par):
+    def negll(theta):
+        mu, sigma, xi = par.to_gev(theta)
+        if not par.feasible(xi) or not np.isfinite(mu):
+            return _BIG
+        ll = loglik_fn(mu, sigma, xi)
+        return -ll if np.isfinite(ll) else _BIG
+    return negll
 
 
 def _maximize(loglik_fn, par, starts):
     """Multi-start Nelder-Mead on -loglik, followed by restarts from the best point."""
-
-    def negll(theta):
-        mu, sigma, xi = par.to_gev(theta)
-        if not par.feasible(xi) or not np.isfinite(mu):
-            return 1e12
-        ll = loglik_fn(mu, sigma, xi)
-        return -ll if np.isfinite(ll) else 1e12
-
+    negll = _negll_fn(loglik_fn, par)
     best = None
     for mu, sigma, xi in starts:
         # Inflate sigma until the starting point is inside the support.
         for _ in range(30):
             theta0 = par.from_gev(mu, sigma, xi)
-            if negll(theta0) < 1e12:
+            if negll(theta0) < _BIG:
                 break
             sigma *= 2.0
         else:
             continue
-        if len(theta0) == 0:            # nothing free (cannot happen with current options)
-            res_x, res_f = theta0, negll(theta0)
-        else:
-            res = minimize(negll, theta0, method="Nelder-Mead",
-                           options=dict(xatol=1e-9, fatol=1e-11, maxiter=20000, maxfev=40000))
-            res_x, res_f = res.x, res.fun
-        if best is None or res_f < best[1]:
-            best = (res_x, res_f)
+        res = minimize(negll, theta0, method="Nelder-Mead",
+                       options=dict(xatol=1e-9, fatol=1e-11, maxiter=20000, maxfev=40000))
+        if best is None or res.fun < best[1]:
+            best = (res.x, res.fun)
     if best is None:
         raise RuntimeError("no feasible starting value found")
 
@@ -113,7 +158,7 @@ def _maximize(loglik_fn, par, starts):
             break
         x, f = res.x, res.fun
     mu, sigma, xi = par.to_gev(x)
-    return FitResult(float(mu), float(sigma), float(xi), float(-f), bool(f < 1e12))
+    return FitResult(float(mu), float(sigma), float(xi), float(-f), bool(f < _BIG))
 
 
 def _gumbel_start(values):
@@ -152,6 +197,60 @@ def fit_exceedance(Y, tau, fix_xi=None, pareto=False, quantile=None, starts=None
             mu, sigma = lk.pgp_to_gev(lam0, psi, xi, tau_bar)
             starts.append((float(mu), float(sigma), xi))
     return _maximize(lambda m, s, x: lk.exceedance_loglik(Y, tau, m, s, x), par, starts)
+
+
+def fit_local(data, start, tau=None, fix_xi=None, pareto=False, quantile=None):
+    """Fast single-start MLE: L-BFGS-B with analytic gradient, Nelder-Mead fallback.
+
+    data: X (k largest) if tau is None, otherwise exceedances Y with threshold tau.
+    start: (mu, sigma, xi) starting point, e.g. the true parameters in a simulation.
+    """
+    if tau is None:
+        X = lk._klargest_array(data)
+        ll_fn = lambda m, s, x: float(np.sum(lk._core_logpdf(X, X[:, -1], m, s, x)))
+        sc_fn = lambda m, s, x: lk._core_score(X, X[:, -1], m, s, x).sum(axis=0)
+        const = 0.0
+    else:
+        Y, tau_v = lk._exceedance_arrays(data, tau)
+        const = -float(np.sum(lk.gammaln((~np.isnan(Y)).sum(axis=1) + 1.0)))
+        ll_fn = lambda m, s, x: float(np.sum(lk._core_logpdf(Y, tau_v, m, s, x)))
+        sc_fn = lambda m, s, x: lk._core_score(Y, tau_v, m, s, x).sum(axis=0)
+    par = _Parametrization(fix_xi, pareto, quantile)
+    negll = _negll_fn(ll_fn, par)
+
+    def fun_grad(theta):
+        f = negll(theta)
+        if f >= _BIG:
+            return f, np.zeros_like(theta)
+        mu, sigma, xi = par.to_gev(theta)
+        g = par.chain(theta, sc_fn(mu, sigma, xi))
+        if not np.all(np.isfinite(g)):
+            return _BIG, np.zeros_like(theta)
+        return f, -g
+
+    mu0, s0, xi0 = start
+    theta0 = None
+    for _ in range(30):                     # inflate sigma until feasible
+        cand = par.from_gev(mu0, s0, xi0)
+        if negll(cand) < _BIG:
+            theta0 = cand
+            break
+        s0 *= 2.0
+    if theta0 is None:
+        return FitResult(np.nan, np.nan, np.nan, -np.inf, False)
+
+    res = minimize(fun_grad, theta0, jac=True, method="L-BFGS-B", bounds=par.bounds(),
+                   options=dict(maxiter=500, ftol=1e-13, gtol=1e-7))
+    x, f = res.x, res.fun
+    _, g = fun_grad(x)
+    # Fallback when L-BFGS-B stalls (e.g. against the support boundary).
+    if not res.success or f >= _BIG or np.max(np.abs(g) * (1 + np.abs(x))) > 1e-3:
+        nm = minimize(negll, x if f < _BIG else theta0, method="Nelder-Mead",
+                      options=dict(xatol=1e-9, fatol=1e-11, maxiter=20000, maxfev=40000))
+        if nm.fun < f:
+            x, f = nm.x, nm.fun
+    mu, sigma, xi = par.to_gev(x)
+    return FitResult(float(mu), float(sigma), float(xi), float(-f + const), bool(f < _BIG))
 
 
 def lr_statistic(unrestricted: FitResult, restricted: FitResult) -> float:

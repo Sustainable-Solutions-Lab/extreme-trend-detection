@@ -1,0 +1,17 @@
+{
+  // Dark indigo window tint so this repo's VS Code window is easy to tell apart.
+  "workbench.colorCustomizations": {
+    "titleBar.activeBackground": "#2c2458",
+    "titleBar.activeForeground": "#ebe8f7",
+    "titleBar.inactiveBackground": "#201a42",
+    "titleBar.inactiveForeground": "#b0aac8",
+    "activityBar.background": "#2c2458",
+    "activityBar.foreground": "#ebe8f7",
+    "statusBar.background": "#2c2458",
+    "statusBar.foreground": "#ebe8f7",
+    "sideBar.background": "#18142f",
+    "editor.background": "#110e22",
+    "panel.background": "#110e22",
+    "terminal.background": "#110e22"
+  }
+}

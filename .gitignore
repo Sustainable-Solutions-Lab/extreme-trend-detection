@@ -4,3 +4,7 @@ __pycache__/
 external/
 *.egg-info/
 .pytest_cache/
+data/input/
+data/output/
+.vscode/*
+!.vscode/settings.json

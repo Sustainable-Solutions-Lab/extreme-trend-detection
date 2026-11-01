@@ -21,9 +21,9 @@ nor the number of periods needs to be large.
 | §2.1, eq. (4) | GEV_k likelihood for the k largest per period | done: `likelihood.py` |
 | §2.3, eq. (7)–(8) | Exceedance likelihood (Poisson count × GP excesses) | done: `likelihood.py` |
 | §2.2.2–2.2.3 | MLE and generalized LR tests: ξ = ξ₀, q₀.₉ = q₀, µ = σ/ξ (Pareto), Zipf | done: `mle.py` (LR statistic) |
-| §2.2.2, App. B | ξ̂-dependent critical values `cv(ξ̂) = exp(−a₀−a₁ξ̂−a₂ξ̂²)` | to do (authors' coefficients used in tests) |
+| §2.2.2, App. B | ξ̂-dependent critical values `cv(ξ̂) = exp(−a₀−a₁ξ̂−a₂ξ̂²)` | done for k largest: `critical_values.py`, `scripts/calibrate_cv.py` |
 | §2.4, App. B.2 | Bonferroni critical values for exceedances | to do |
-| §3.1, eq. (12)–(13) | Nyblom test of parameter constancy, and the joint L* test | to do (scores already available) |
+| §3.1, eq. (12)–(13) | Nyblom test of parameter constancy, and the joint L* test | L_T done (`nyblom.py`, reproduces Table 2); L* to do |
 | §3.2, eq. (14)–(15) | Bayesian TVP-GEV: random walks in (ξ, α, s, m), fitted by HMC in Stan | to do (parameter map and extended-support likelihood done) |
 | §3.2.4 | Bayes factors via Meng & Wong's simple identity | to do |
 
@@ -38,11 +38,21 @@ itself has shifted?
 tvextremes/
   likelihood.py   per-period log-densities, analytic scores (d/d(ξ, σ, µ)), extended-support h~,
                   parameter maps (GEV ↔ Poisson-GP, GP tail + n → GEV, TVP (ξ, α, s, m) → GEV)
-  mle.py          constant-parameter MLE (unrestricted and under each null), LR statistic
+  mle.py          constant-parameter MLE (unrestricted and under each null; robust multi-start
+                  and fast gradient-based fits), LR statistic
+  nyblom.py       Nyblom L_T stability statistic and Hessian-based information
+  critical_values.py  Monte Carlo calibration of the xi_hat-adjusted critical values; lookup
+scripts/
+  calibrate_cv.py      run a calibration for given (k, T) and store it in data/calibration
+  import_mw2024_cvs.py copy the authors' coefficients into data/calibration
 tests/
-  test_likelihood.py   self-contained checks (scipy cross-checks, normalization, scores, simulation)
-  test_replication.py  reproduces Table 1 of the paper from the authors' data
-external/              authors' replication archive (not in git; see below)
+  test_likelihood.py       self-contained checks (scipy cross-checks, normalization, scores, simulation)
+  test_critical_values.py  calibration machinery
+  test_replication.py      reproduces Tables 1 and 2 of the paper from the authors' data
+data/
+  calibration/    critical-value tables (committed)
+  input/, output/ raw inputs and generated results (not in git)
+external/         authors' replication archive (not in git; see below)
 ```
 
 ### Data conventions
