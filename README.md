@@ -46,14 +46,19 @@ tvextremes/
                   hump, random walk in mu, sigma or xi)
   trend_tests.py  baselines: GEV with a linear trend in location (LR test), Mann-Kendall
   power.py        power study: simulate a design, nominal and size-adjusted rejection rates
+  parents.py      Stage B: daily AR(1) Gaussian series mapped to known parents, k largest per year
+                  with declustering, exact truth for annual-maximum quantiles
+  stage_b.py      Stage B: simulate a configuration, size/power and return-level accuracy
 scripts/
   calibrate_cv.py      run a calibration for given (k, T) and store it in data/calibration
   import_mw2024_cvs.py copy the authors' coefficients into data/calibration
   power_study.py       run the Stage A power study and write data/results/power_summary.csv
+  stage_b.py           run Stage B and write data/results/stage_b_*.csv
 tests/
   test_likelihood.py       self-contained checks (scipy cross-checks, normalization, scores, simulation)
   test_critical_values.py  calibration machinery
   test_power.py            pseudo-data generator, trend tests, time-reversal invariance
+  test_stage_b.py          parent transforms, declustering, exact truth, return-level scoring
   test_replication.py      reproduces Tables 1 and 2 of the paper from the authors' data
 docs/
   power_study_plan.md      design of the pseudo-data power and robustness study
@@ -267,10 +272,13 @@ data:
 1. ~~Critical-value calibration in Python (Appendix B)~~ done for k largest; exceedance
    (Bonferroni) calibration still to do.
 2. ~~Nyblom stability test~~ done; the joint L* test still to do.
-3. Pseudo-data size and power studies (`docs/power_study_plan.md`). Stage A (exact GEV_k data with
-   known paths, compared with linear-trend LR and Mann-Kendall) is done; see results above. Stage B
-   (parent distributions: normal, gamma, Student-t and tanh-normal, with serial
-   dependence and seasonality) is next.
+3. Pseudo-data size and power studies (`docs/power_study_plan.md`).
+   - Stage A (exact GEV_k data with known paths) is done; see the results above.
+   - Stage B (daily data from known parents: normal, gamma, Student-t, tanh-normal and beta,
+     with serial correlation) is running. It measures size and power when the extremes are only
+     approximately GEV. It also compares estimated return levels X_p (the level that 50%, 90%,
+     95% or 99% of annual maxima stay below) with the truth implied by the generating function,
+     and tests sensitivity to record length (30, 45, 85 and 150 years).
 4. A TVP-GEV/exceedance model in Stan (via cmdstanpy), adapted from the authors' models, with
    importance reweighting and Bayes factors. Check that it recovers known paths.
 5. ERA5: build k-largest or exceedance panels per grid cell or region, decluster to handle serial

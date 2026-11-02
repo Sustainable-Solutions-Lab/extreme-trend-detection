@@ -8,6 +8,9 @@ records, per panel:
 * trend_lr non-stationary GEV linear-location-trend LR (log-likelihood difference)
 * mu1_hat  its estimated location change over the sample
 * mk_z     Mann-Kendall Z for the per-period maxima
+* mu_hat, sigma_hat  the rest of the constant-parameter fit (for return-level accuracy)
+* trend_mu0, trend_sigma, trend_xi  the rest of the linear-trend fit; with mu1_hat this gives the
+  fitted location mu0 + mu1 (u_t - 1/2) for every year
 
 All alternatives reuse the same exponential draws and Brownian paths (common random numbers), so
 differences across alternatives and effect sizes are not blurred by independent noise. The null
@@ -35,9 +38,10 @@ from . import critical_values as cv
 from . import pseudo
 from .mle import fit_local
 from .nyblom import nyblom_test
-from .trend_tests import mann_kendall, trend_lr_test
+from .trend_tests import fit_gev_trend, mann_kendall
 
-STATS = ("nyblom", "xi_hat", "trend_lr", "mu1_hat", "mk_z")
+STATS = ("nyblom", "xi_hat", "trend_lr", "mu1_hat", "mk_z", "mu_hat", "sigma_hat",
+         "trend_mu0", "trend_sigma", "trend_xi")
 
 # Default alternatives. Amount units: mu in baseline sigma, sigma in log sigma, xi in xi.
 MU_AMOUNTS = (0.25, 0.5, 0.75, 1.0, 1.5, 2.0)
@@ -55,7 +59,7 @@ def default_alternatives():
 
 
 def panel_statistics(X, start):
-    """The five statistics for one panel X (T, k). start: (mu, sigma, xi) for the constant fit."""
+    """The statistics in STATS for one panel X (T, k). start: (mu, sigma, xi) for the constant fit."""
     out = np.full(len(STATS), np.nan)
     fit = fit_local(X, start)
     # A second start from the data guards against a poor start under strong alternatives.
@@ -64,10 +68,21 @@ def panel_statistics(X, start):
     if fit2.success and (not fit.success or fit2.loglik > fit.loglik):
         fit = fit2
     if fit.success:
-        out[0] = nyblom_test(X, fit, interior_tol=0.1)
-        out[1] = fit.xi
-        lr, mu1, _ = trend_lr_test(X, fit)
-        out[2], out[3] = lr, mu1
+        try:        # numerical failures (e.g. a non-finite information matrix) count as failed fits
+            with np.errstate(all="ignore"):
+                out[0] = nyblom_test(X, fit, interior_tol=0.1)
+            out[1] = fit.xi
+            out[5], out[6] = fit.mu, fit.sigma
+        except (np.linalg.LinAlgError, ValueError, FloatingPointError):
+            pass
+        try:
+            with np.errstate(all="ignore"):
+                tr = fit_gev_trend(X, start=fit)
+            if tr.success:
+                out[2] = max(tr.loglik - fit.loglik, 0.0)
+                out[3], out[7], out[8], out[9] = tr.mu1, tr.mu0, tr.sigma, tr.xi
+        except (np.linalg.LinAlgError, ValueError, FloatingPointError):
+            pass
     if X.shape[0] > 2:
         out[4] = mann_kendall(X[:, 0])[0]
     return out
@@ -128,7 +143,7 @@ def save(result: DesignResult, path):
 
 
 def load(path):
-    d = np.load(path)
+    d = np.load(path)          # files written before mu_hat/sigma_hat were added have 5 columns
     alts = []
     for lab in d["labels"]:
         p, s, a = str(lab).split(":")

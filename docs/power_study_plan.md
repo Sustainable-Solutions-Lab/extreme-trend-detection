@@ -63,70 +63,92 @@ At the calibration's speed this is a few hours, niced, on 14 cores.
 **Calibration needed:** the Nyblom ξ̂-adjustment for (1, 85), (3, 85) and (10, 85). The Nyblom run
 for one design took 8 minutes at N = 40,000, so this is cheap.
 
-## Stage B: parent-distribution data (robustness of size, then power)
+## Stage B: daily data from known parent distributions
 
-Simulate daily series from a known parent, take the k largest per year, and run the same tests.
-The parent and its change are known exactly. The GEV parameters of the extremes are not: the
-yearly maxima are only approximately GEV, and that is what this stage measures.
+Simulate daily series from a known generating function, keep the k largest values of each year,
+and run the same tests and fits as in Stage A. Everything about the generating function is known,
+so the truth is exact. The GEV parameters of the extremes are not known exactly: the yearly
+maxima are only approximately GEV, and that approximation is what this stage measures.
 
-**Parents** (four; the raised cosine was dropped because tanh-normal covers bounded tails):
-- Normal: light tail; ξ → 0 slowly.
-- Gamma: skewed, like precipitation.
-- Student-t with 4–10 degrees of freedom: heavy tail.
-- Tanh-normal (soft cap): see below.
+**Construction.** A daily Gaussian series Z with AR(1) correlation φ (stationary, unit variance)
+is mapped through the parent's quantile function:
 
-**One form for every parent.** Daily value X = m_t + s_t · ε, where ε is the standardized parent
-draw. For tanh-normal,
+    X_d = m_t + s_t · ε(Z_d; tail_t)
 
-    X = m_t + L_t · tanh(s_t · Z / L_t),   Z ~ N(0, 1)
+where m_t (centre), s_t (width) and the tail parameter vary between years but are constant within
+a year (`tvextremes/parents.py`).
 
-which looks normal for s·Z ≪ L and saturates at m ± L (a wet-bulb or soil-moisture type
-limit). The parameters m_t, s_t, L_t vary between years but are constant within a year. Because
-tanh is monotone, the k largest of X are the k largest of Z passed through the same map, so the
-true distribution of the annual extremes, and true return levels, are exact for every year.
-Notes on tanh-normal:
-- It is an affine transform of the logit-normal, since tanh(u) = 2·logistic(2u) − 1.
-- Its tail decays faster than any power, so formally ξ = 0.
-- Finite-block fits give a clearly negative ξ̂ that depends on c = L/s: annual maxima give
-  −0.44, −0.24 and −0.17 for c = 1.5, 3 and 5.
+**Parents** (the raised cosine was dropped; the beta replaces it as the bounded case with an
+exact tail index):
+
+| Parent | ε | Tail parameter | Notes |
+|---|---|---|---|
+| Normal | Z | — | light tail; ξ → 0 slowly |
+| Gamma | standardized gamma(a) | shape a = 2 | skewed, like precipitation |
+| Student-t | standardized t_ν | ν = 6 | heavy tail, ξ = 1/ν |
+| Tanh-normal | c·tanh(Z/c) | headroom c = 3 | soft cap at m + s·c; formally ξ = 0, fitted ξ̂ ≈ −0.27 |
+| Beta | rescaled beta(b, b) | b = 3 | hard cap; ξ = −1/b exactly |
+
+For a given year the map from Z to X is increasing. So the k largest values of X fall on the same
+days as the k largest of Z, and declustering picks the same days. Selection is therefore done
+once per replicate on Z and shared by all changes (common random numbers).
+
+**Truth.** For the same reason, the annual maximum of X is that year's map applied to the annual
+maximum of Z, and so are its quantiles. The true X_p is the level the annual maximum stays below
+in a fraction p of years:
+- For independent days it is exact: X_p = map(Φ⁻¹(p^(1/365))).
+- For correlated days, the quantiles of the annual maximum of Z come from one simulation of
+  500,000 years per φ. The resulting error (about 0.005 daily sd at p = 0.99) is negligible.
 
 **Changes**, one knob at a time, mirroring the three GEV parameters:
 
-| Knob | Normal | Gamma | Student-t | Tanh-normal |
-|---|---|---|---|---|
-| Mean | m_t | m_t | m_t | m_t |
-| Width | s_t | s_t | s_t | s_t and L_t together (s/L fixed) |
-| Tail | — | gamma shape | degrees of freedom | headroom c_t = L_t/s_t |
+| Knob | Moves | Sizes (over the record) |
+|---|---|---|
+| mean | m_t, all parents | 0.1, 0.25, 0.5, 1 daily sd |
+| width | s_t, all parents (tanh: cap stretches with it) | 0.05, 0.1, 0.2, 0.4 in log s |
+| tail | gamma a, t ν, tanh c, beta b | 0.25, 0.5, 1, 1.5 in log of the parameter |
+| capped warming | tanh and beta: m rises, absolute cap fixed | 0.1, 0.25, 0.5, 1 daily sd |
 
-- **Central case:** no change (m, s, L and the tail all constant). It gives the false-alarm rate.
-- **Changing cases:** each knob follows a known path: linear, step (mid-record and at 80%) or
-  exponential, both up and down, at about 4 sizes from small to large.
-- **Tanh-normal warming toward a fixed limit:** add a variant where m rises and the absolute cap
-  m + L stays fixed. This is the headroom-shrinking case in which the trend in extremes flattens.
-
-**Dependence and season:**
-- Serial correlation: AR(1) in ε with φ ∈ {0, 0.5, 0.8}, the range seen in daily temperature
-  anomalies.
-- Seasonality: a seasonal cycle in mean and variance, so the yearly maximum comes mostly from one
-  season. Run on a subset only, since it doubles the cost.
-- Declustering for k > 1: take the k largest values separated by at least r days, with
-  r ∈ {0, 3, 7}. This shows whether clusters (one heatwave giving several of the k largest) break
-  the size of the k > 1 designs.
-
-**Designs and replicates:**
-- Designs: T = 85 with k ∈ {1, 3, 10}.
-- Replicates: 2,000 per changing case, which gives ±1.1 percentage points on a 50% power. Use
-  10,000 for the no-change cases, which gives ±0.22 points on a 5% size.
-- Size: about 4 parents × ~35 cases × 3 k × 3 φ ≈ 1,300 cases. At roughly 5–15 s each on 14
-  cores, that is about 4 hours.
+- **Central case:** no change.
+- **Path shapes:** linear, step at mid-record, step at 80%, and exponential.
+- **Direction:** only upward changes are run. Every statistic is invariant under time reversal
+  (tested), so a downward change gives the same results as the reversed upward one.
+- **Capped warming** is the bounded case in which location, width and tail of the extremes all
+  change together, as the headroom to a fixed limit shrinks.
 
 **Scoring:**
-- Size: any rejection under no change is a false alarm.
-- Power: against the known size of the change in the parent.
-- Accuracy: fitted return levels and their trends against the exact truth. The truth is analytic
-  for independent days (F^365) and comes from very large simulations when there is serial
-  correlation. For tanh-normal, also check whether the fitted GEV upper endpoint µ − σ/ξ lands
-  near the true cap.
+1. **Size and power:** the Nyblom test (ξ̂-adjusted), the GEV linear-trend LR test and
+   Mann–Kendall, at their nominal critical values and size-adjusted. The output is
+   `data/results/stage_b_summary.csv`.
+2. **Return levels against the truth:** for p = 0.5, 0.9, 0.95 and 0.99, compare estimated X_p
+   with the truth implied by the generating function. Scores are bias and RMSE, in the first year,
+   in the last year, and for the change between them. The output is
+   `data/results/stage_b_return_levels.csv`. Two estimators so far:
+   - the constant-parameter GEV fit, which estimates no change;
+   - the GEV fit with a linear trend in location.
+
+   The Bayesian time-varying model (Stage C) will be scored the same way.
+
+**Replicates:** 10,000 for the no-change case (±0.22 percentage points on a 5% size) and 2,000 for
+each change (±1.1 points on a 50% power).
+
+**Overnight run (2026-11-01), in priority order:**
+
+| Step | What | Estimated time |
+|---|---|---|
+| 1 | T = 85, k = 1, φ ∈ {0, 0.5, 0.8}, all 5 parents | 1.6 h |
+| 2 | T = 85, k = 3, same grid | 1.6 h |
+| 3 | Record length: Nyblom calibration, then T ∈ {30, 45, 150}, k = 1, φ = 0.5, all parents | 1.8 h |
+| 4 | T = 85, k = 10, φ = 0.8, without declustering and with r = 3 days | 2.1 h |
+
+T = 30 is a climate-normal period, T = 45 the satellite era (1979 onward), T = 85 ERA5, and
+T = 150 a long station record. Results are committed after each step.
+
+**Later:**
+- Seasonality: a seasonal cycle in mean and variance. It breaks the shared-selection shortcut,
+  so it needs the full daily transform and runs on a subset.
+- The full record-length grid (all φ and k).
+- Declustering gap r = 7 days.
 
 ## Stage C (later, separate): recovery of known paths
 
