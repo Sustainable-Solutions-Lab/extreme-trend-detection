@@ -268,7 +268,7 @@ data:
    (Bonferroni) calibration still to do.
 2. ~~Nyblom stability test~~ done; the joint L* test still to do.
 3. Pseudo-data size and power studies (`docs/power_study_plan.md`). Stage A (exact GEV_k data with
-   known paths, compared with linear-trend LR and Mann-Kendall) is built and running. Stage B
+   known paths, compared with linear-trend LR and Mann-Kendall) is done; see results above. Stage B
    (parent distributions: normal, gamma, Student-t and tanh-normal, with serial
    dependence and seasonality) is next.
 4. A TVP-GEV/exceedance model in Stan (via cmdstanpy), adapted from the authors' models, with
