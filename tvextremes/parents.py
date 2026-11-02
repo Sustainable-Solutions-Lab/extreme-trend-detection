@@ -11,9 +11,12 @@ where m_t, s_t and the tail parameter vary between years but are constant within
 * gamma:  eps = (G - a)/sqrt(a), G the gamma(a) quantile at Phi(Z); skewed like precipitation
 * t:      eps = t_nu quantile at Phi(Z), divided by its sd sqrt(nu/(nu-2)); heavy tail, xi = 1/nu
 * tanh:   eps = c tanh(Z/c); normal for Z << c, soft cap at m + s c (c = headroom in units of s)
-* beta:   eps = (2 B - 1) sqrt(2 b0 + 1), B the beta(b, b) quantile at Phi(Z), b0 = 3 the baseline
-          (unit variance at baseline). Hard cap at m + s sqrt(2 b0 + 1), with true xi = -1/b
-          exactly (the density falls like (cap - x)^(b-1)).
+* beta:   eps = 3 (2 B - 1), B the beta(alpha, beta) quantile at Phi(Z), baseline
+          alpha = beta = 4 (unit variance; xi = -0.25, typical of temperature extremes).
+          Hard bounds at m -/+ 3 s. The true tail index is
+          xi = -1/beta exactly (the density falls like (cap - x)^(beta-1)), whatever alpha is.
+          alpha moves the mass within the fixed bounds: the mean is alpha/(alpha + beta), so
+          raising alpha pushes the bulk and the maxima toward the upper bound with xi unchanged.
 
 At baseline every parent has eps with mean 0 and variance about 1 (tanh slightly less), so
 changes in m are in units of the daily standard deviation for all of them.
@@ -37,13 +40,24 @@ from scipy.stats import norm
 from scipy.stats import t as t_dist
 
 FAMILIES = ("normal", "gamma", "t", "tanh", "beta")
-BASE_TAIL = {"normal": None, "gamma": 2.0, "t": 6.0, "tanh": 3.0, "beta": 3.0}
+BASE_TAIL = {"normal": None, "gamma": 2.0, "t": 6.0, "tanh": 3.0, "beta": 4.0}
 TAIL_NAME = {"gamma": "shape a", "t": "degrees of freedom", "tanh": "headroom c = L/s",
              "beta": "b (xi = -1/b)"}
-KNOBS = ("mean", "width", "tail", "capped_warming")
+KNOBS = ("mean", "width", "tail", "alpha", "capped_warming")
 SHAPES = ("linear", "step50", "step80", "exp")
 DAYS = 365
-BETA_SCALE = np.sqrt(2 * 3.0 + 1)          # fixed, so the beta cap does not move when b changes
+BETA_SCALE = np.sqrt(2 * 4.0 + 1)          # = 3; fixed, so the bounds do not move with alpha, beta
+
+
+def _beta_ab(tail):
+    """(alpha, beta) from a beta tail argument: None (baseline), a scalar (alpha = beta), or an
+    array whose last axis is (alpha, beta)."""
+    if tail is None:
+        return 4.0, 4.0
+    tail = np.asarray(tail, float)
+    if tail.ndim and tail.shape[-1] == 2:
+        return tail[..., 0], tail[..., 1]
+    return tail, tail
 
 
 # ---------------------------------------------------------------------------
@@ -87,7 +101,8 @@ def k_largest_by_year(z, T, k, r=0, days=DAYS):
 # ---------------------------------------------------------------------------
 
 def standard_eps(family, z, tail=None):
-    """eps(z; tail) for one family. z: array; tail: scalar or array broadcastable to z."""
+    """eps(z; tail) for one family. z: array; tail: scalar or array broadcastable to z (for the
+    beta, optionally with a last axis of length 2 holding (alpha, beta))."""
     z = np.asarray(z, float)
     if family == "normal":
         return z
@@ -99,14 +114,17 @@ def standard_eps(family, z, tail=None):
     if family == "gamma":
         return (gamma_dist.isf(p_up, tail) - tail) / np.sqrt(tail)
     if family == "beta":
-        return (2.0 * beta_dist.isf(p_up, tail, tail) - 1.0) * BETA_SCALE
+        a, b = _beta_ab(tail)
+        return (2.0 * beta_dist.isf(p_up, a, b) - 1.0) * BETA_SCALE
     raise ValueError(f"unknown family {family!r}; choose from {FAMILIES}")
 
 
 def transform(family, z_top, m, s, tail):
     """X = m_t + s_t eps(z; tail_t) for the selected values z_top (..., T, k); parameters (T,)."""
     m, s = np.asarray(m, float)[:, None], np.asarray(s, float)[:, None]
-    tail = None if tail is None else np.asarray(tail, float)[:, None]
+    tail = None if tail is None else np.asarray(tail, float)
+    if tail is not None:
+        tail = tail[:, None, :] if tail.ndim == 2 else tail[:, None]
     return m + s * standard_eps(family, z_top, tail)
 
 
@@ -139,9 +157,10 @@ class Change:
     """Which knob moves, along which path, by how much.
 
     Amount units: mean and capped_warming in units of s (the baseline width, 1); width in log s;
-    tail in log of the tail parameter. capped_warming (tanh and beta only): the centre m rises
-    while the absolute cap stays fixed, so the headroom shrinks and location, width and tail of
-    the extremes all change together.
+    tail and alpha in log of the parameter. For the beta, "tail" changes beta (the upper-tail
+    shape, xi = -1/beta) and "alpha" changes alpha (the position of the mass within the fixed
+    bounds), each with the other held at its baseline of 4. capped_warming (tanh only): the centre m rises while
+    the absolute cap stays fixed.
     """
     knob: str
     shape: str
@@ -161,6 +180,8 @@ def parameter_paths(family, change: Change, T, tail0=None):
     m = np.zeros(T)
     s = np.ones(T)
     tail = None if tail0 is None else np.full(T, float(tail0))
+    if family == "beta":
+        tail = np.full((T, 2), float(tail0))             # columns: alpha, beta
     if change.amount == 0:
         return m, s, tail
     g = change.amount * shape_values(change.shape, T)
@@ -171,10 +192,17 @@ def parameter_paths(family, change: Change, T, tail0=None):
     elif change.knob == "tail":
         if tail is None:
             raise ValueError("the normal has no tail parameter")
-        tail = tail0 * np.exp(g)
+        if family == "beta":
+            tail[:, 1] = tail0 * np.exp(g)
+        else:
+            tail = tail0 * np.exp(g)
+    elif change.knob == "alpha":
+        if family != "beta":
+            raise ValueError("alpha applies to the beta parent only")
+        tail[:, 0] = tail0 * np.exp(g)
     elif change.knob == "capped_warming":
-        if family not in ("tanh", "beta"):
-            raise ValueError("capped_warming applies to bounded parents (tanh, beta)")
+        if family != "tanh":
+            raise ValueError("capped_warming applies to tanh; for the beta use the alpha knob")
         m = m + g
         cap = cap_height(family, tail0)                 # absolute cap, fixed
         headroom = cap - m                              # distance from centre to cap
@@ -204,17 +232,21 @@ def default_changes(family):
     # The annual maximum of 365 days sits ~2.8 daily sd above the mean with a spread of ~0.35 sd,
     # so a mean shift of 0.25 daily sd is already ~0.7 GEV sigma.
     amounts = {"mean": (0.1, 0.25, 0.5, 1.0), "width": (0.05, 0.1, 0.2, 0.4),
-               "tail": (0.25, 0.5, 1.0, 1.5), "capped_warming": (0.1, 0.25, 0.5, 1.0)}
+               "tail": (0.25, 0.5, 1.0, 1.5), "alpha": (0.25, 0.5, 1.0, 1.5),
+               "capped_warming": (0.1, 0.25, 0.5, 1.0)}
     if family == "beta":
-        # Keep b >= 2 (true xi >= -0.5) in every year, where GEV maximum likelihood is regular
-        # (Smith 1985). Below that the fitted endpoint hugs the sample maximum and the
-        # information matrix used by the Nyblom test does not exist. With b0 = 3 the most
-        # negative centred path value is -0.5 (linear, step50), so log b changes <= 0.8.
+        # Keep beta >= 2.68 (true xi >= -0.37) in every year. GEV maximum likelihood is regular
+        # only for xi > -0.5 (Smith 1985), and a constant GEV fitted across a large change in a
+        # bounded variable is pushed well below the true xi (to about -0.9), where the fitted
+        # endpoint hugs the sample maximum and the Nyblom information matrix does not exist.
+        # With beta0 = 4 the most negative centred path value is -0.5, so log changes <= 0.8.
         amounts["tail"] = (0.2, 0.4, 0.6, 0.8)
     knobs = ["mean", "width"]
     if BASE_TAIL[family] is not None:
         knobs.append("tail")
-    if family in ("tanh", "beta"):
+    if family == "beta":
+        knobs.append("alpha")
+    if family == "tanh":
         knobs.append("capped_warming")
     for knob in knobs:
         for shape in SHAPES:

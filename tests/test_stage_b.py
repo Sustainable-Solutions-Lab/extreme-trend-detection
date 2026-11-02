@@ -60,13 +60,36 @@ def test_marginals_and_monotone(family):
         assert x.var() == pytest.approx(1, abs=0.02)
 
 
-@pytest.mark.parametrize("family", ["tanh", "beta"])
-def test_capped_warming_keeps_cap(family):
+def test_capped_warming_keeps_cap_tanh():
     ch = pa.Change("capped_warming", "linear", 1.0)
-    m, s, tail = pa.parameter_paths(family, ch, 85)
-    cap = m + s * (tail if family == "tanh" else pa.BETA_SCALE)
-    np.testing.assert_allclose(cap, pa.cap_height(family))
+    m, s, tail = pa.parameter_paths("tanh", ch, 85)
+    np.testing.assert_allclose(m + s * tail, pa.cap_height("tanh"))
     assert m[-1] - m[0] == pytest.approx(1.0)
+
+
+def test_beta_alpha_and_beta_knobs():
+    """alpha moves the mass toward the fixed upper bound with xi unchanged; beta sets the tail."""
+    T = 85
+    m, s, ab = pa.parameter_paths("beta", pa.Change("alpha", "linear", 1.0), T)
+    np.testing.assert_allclose(ab[:, 1], 4.0)                    # beta (xi = -1/4) fixed
+    assert ab[-1, 0] / ab[0, 0] == pytest.approx(np.e)
+    np.testing.assert_allclose(m, 0) and np.testing.assert_allclose(s, 1)   # bounds fixed
+    z = np.array([0.0, 3.0])
+    first = pa.transform("beta", z[None, None, :].repeat(T, 1), m, s, ab)[0]
+    assert np.all(first[-1] > first[0])                          # mass moves up toward the cap
+    assert np.all(first < pa.cap_height("beta"))
+    m, s, ab = pa.parameter_paths("beta", pa.Change("tail", "linear", 0.8), T)
+    np.testing.assert_allclose(ab[:, 0], 4.0)
+    assert ab[:, 1].min() >= 2.6                                 # xi >= -0.38 throughout
+    for ch in pa.default_changes("beta"):
+        assert pa.parameter_paths("beta", ch, T)[2][:, 1].min() >= 2.6
+
+
+def test_beta_ab_marginal():
+    z = np.linspace(-4, 4, 41)
+    eps = pa.standard_eps("beta", z, np.array([5.0, 2.5]))
+    np.testing.assert_allclose((eps / pa.BETA_SCALE + 1) / 2, beta_dist.ppf(norm.cdf(z), 5.0, 2.5),
+                               rtol=1e-6, atol=1e-12)
 
 
 def test_true_return_level_matches_simulation():
