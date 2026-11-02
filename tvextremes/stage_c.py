@@ -146,11 +146,82 @@ def mle_quantile_paths(stats, T, probs=PROBS):
 MLE_NAMES = ("const", "trend", "split")
 
 
-def _panel(family, change, k, T, phi, r, seed, rep):
+def _panel(family, change, k, T, phi, r, seed, rep, with_mean=False):
+    """Panel X (T, k) of replicate rep; with_mean also returns the annual mean of all days."""
     rng = np.random.default_rng(np.random.SeedSequence([seed, rep]))
-    zt = pa.k_largest_by_year(pa.ar1_gaussian(1, T * pa.DAYS, phi, rng), T, k, r)
+    z = pa.ar1_gaussian(1, T * pa.DAYS, phi, rng)
+    zt = pa.k_largest_by_year(z, T, k, r)
     m, s, tail = pa.parameter_paths(family, change, T)
-    return pa.transform(family, zt, m, s, tail)[0]
+    X = pa.transform(family, zt, m, s, tail)[0]
+    if with_mean:
+        return X, pa.annual_mean(family, z, T, m, s, tail)[0]
+    return X
+
+
+# Further MLE estimators, computed after the fact by regenerating the panels from their seeds
+# (cheap: no Stan). Each fits mu_t, log sigma_t and xi_t linear in a covariate c_t:
+#   trend3     c_t = time (linear trends in all three parameters)
+#   cov3       c_t = annual mean of all days of year t (what an analyst can compute)
+#   cov3_true  c_t = the true mean path m_t (an oracle covariate, e.g. a known warming curve)
+EXTRA_NAMES = ("trend3", "cov3", "cov3_true")
+
+
+def _extra_job(args):
+    from .likelihood import gev_quantile
+    from .mle import fit_local
+    from .pseudo import time_index
+    from .stage_b import _start
+    from .trend_tests import fit_gev_covariate
+    family, change, k, T, phi, r, seed, rep = args
+    X, amean = _panel(family, change, k, T, phi, r, seed, rep, with_mean=True)
+    m_true = pa.parameter_paths(family, change, T)[0]
+    out = np.full((len(EXTRA_NAMES), len(PROBS), T), np.nan)
+    with np.errstate(all="ignore"):
+        start = fit_local(X, _start(X))
+        if not start.success:
+            return rep, out
+        for i, c in enumerate((time_index(T), amean, m_true)):
+            if np.ptp(c) == 0:                           # no variation: the constant fit
+                c = np.zeros(T)
+            try:
+                f = fit_gev_covariate(X, c, start=start)
+            except (np.linalg.LinAlgError, ValueError, FloatingPointError):
+                continue
+            if f.success:
+                mu, sg, xi = f.params()
+                for ip, p in enumerate(PROBS):
+                    out[i, ip] = gev_quantile(p, mu, sg, xi)
+    return rep, out
+
+
+def extra_estimates(res, workers=4, cache_dir=None):
+    """X_p paths (N, len(EXTRA_NAMES), n_p, T) of the further MLE estimators for a scenario,
+    cached as extra_<scenario>.npz in cache_dir if given."""
+    N = res.stats.shape[0]
+    path = None
+    if cache_dir is not None:
+        ch = res.change
+        path = Path(cache_dir) / (f"extra_{res.family}_{ch.knob}_{ch.shape}_{ch.amount:g}_k{res.k}"
+                                  f"_T{res.T}_phi{res.phi:.2f}_r{res.r}.npz")
+        if path.exists():
+            d = np.load(path)
+            if d["q"].shape[0] == N and tuple(d["names"]) == EXTRA_NAMES:
+                return d["q"]
+    jobs = [(res.family, res.change, res.k, res.T, res.phi, res.r, res.seed, i) for i in range(N)]
+    q = np.full((N, len(EXTRA_NAMES), len(PROBS), res.T), np.nan)
+    if workers == 1:
+        parts = map(_extra_job, jobs)
+    else:
+        from . import critical_values as cv
+        ex = ProcessPoolExecutor(max_workers=workers, initializer=cv._single_thread)
+        parts = ex.map(_extra_job, jobs, chunksize=4)
+    for i, o in parts:
+        q[i] = o
+    if workers != 1:
+        ex.shutdown()
+    if path is not None:
+        np.savez_compressed(path, q=q.astype(np.float32), names=np.array(EXTRA_NAMES))
+    return q
 
 
 def _job(args):
@@ -225,7 +296,7 @@ def load(path):
                           d["mle_q"].astype(float), d["tvp_q"].astype(float), d["diag"])
 
 
-def score_rows(res: ScenarioResult, cache_dir=None):
+def score_rows(res: ScenarioResult, cache_dir=None, extra=None):
     """One row per (estimator, p): accuracy of the estimated X_p path against the truth.
 
     Columns (years: 'last' = final year, 'all' = averaged over all years):
@@ -236,10 +307,14 @@ def score_rows(res: ScenarioResult, cache_dir=None):
     * bias_last, rmse_last, rmse_all: error of the level itself (units of the daily parent sd)
     * change_bias, change_rmse: error of the estimated change X_p(last) - X_p(first)
     * cover90_last, cover90_all: coverage of the 90% credible interval (TVP only)
+
+    extra: X_p paths of the further MLE estimators (``extra_estimates``), scored as well.
     """
     m, s, tail = pa.parameter_paths(res.family, res.change, res.T)
     tail_last = None if tail is None else np.asarray(tail)[-1]
     ests = {name: res.mle_q[:, i] for i, name in enumerate(MLE_NAMES)}
+    if extra is not None:
+        ests.update({name: extra[:, i] for i, name in enumerate(EXTRA_NAMES)})
     ests["tvp_mean"] = res.tvp_q[:, 0]
     ests["tvp_median"] = res.tvp_q[:, 1]
     diag = res.diag

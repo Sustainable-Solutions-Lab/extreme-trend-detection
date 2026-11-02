@@ -153,3 +153,43 @@ def test_return_level_rows_trend_tracks_mean_shift():
     assert r["true_change"] == pytest.approx(1.0)
     assert r["const_change_bias"] == pytest.approx(-1.0)
     assert abs(r["trend_change_bias"]) < 0.15
+
+
+def test_precip_scaling_scales_every_quantile():
+    T = 50
+    m, s, tail = pa.parameter_paths("gamma", pa.Change("precip_scaling", "exp", 0.3), T)
+    lam = np.exp(0.3 * pa.shape_values("exp", T))
+    base = np.sqrt(pa.BASE_TAIL["gamma"])                 # X = R - sqrt(a0) at baseline
+    for p in (0.5, 0.99):
+        raw = pa.true_quantile_path("gamma", m, s, tail, p, 0.0) + base
+        np.testing.assert_allclose(raw / raw[0], lam / lam[0], rtol=1e-10)
+
+
+def test_precip_shape_keeps_mean_scaling_and_heavier_tail():
+    T = 50
+    m, s, tail = pa.parameter_paths("gamma", pa.Change("precip_shape", "exp", 0.3), T)
+    lam = np.exp(0.3 * pa.shape_values("exp", T))
+    mean_raw = m + np.sqrt(pa.BASE_TAIL["gamma"])         # mean of eps is 0
+    np.testing.assert_allclose(mean_raw / mean_raw[0], lam / lam[0], rtol=1e-10)
+    assert tail[-1] < tail[0]
+
+
+def test_warm_coupled_moves_width_and_tail_with_mean():
+    m, s, tail = pa.parameter_paths("t", pa.Change("warm_coupled", "exp", 0.5), 40)
+    np.testing.assert_allclose(np.log(s), pa.COUPLE_WIDTH * m)
+    np.testing.assert_allclose(np.log(tail / pa.BASE_TAIL["t"]), pa.COUPLE_TAIL * m)
+    m, s, ab = pa.parameter_paths("beta", pa.Change("warm_coupled", "exp", 0.25), 40)
+    np.testing.assert_allclose(ab[:, 0], 4.0)
+    assert ab[:, 1].min() > 3.27
+
+
+def test_annual_mean_matches_parameters():
+    T = 6
+    rng = np.random.default_rng(8)
+    z = pa.ar1_gaussian(2, T * pa.DAYS, 0.5, rng)
+    m, s, tail = pa.parameter_paths("gamma", pa.Change("precip_scaling", "linear", 0.5), T)
+    am = pa.annual_mean("gamma", z, T, m, s, tail)
+    direct = np.array([[np.mean(m[t] + s[t] * pa.standard_eps("gamma", z[i, t * pa.DAYS:(t + 1) * pa.DAYS], tail[t]))
+                        for t in range(T)] for i in range(2)])
+    np.testing.assert_allclose(am, direct)
+    assert np.all(np.abs(am - m) < 0.5 * s)

@@ -48,6 +48,21 @@ def scenarios(family):
     return out
 
 
+# Covariate-model test cases: parameters move with the mean state, along an accelerating path
+# ("exp", slow then fast, like observed warming) and, for comparison, a linear one. Amounts:
+# mean rise in daily sd (temperature-like) or log scaling of the gamma (precipitation-like; 0.2 is
+# a 22% rise in the mean and every quantile).
+COUPLED = {"normal": [("warm_coupled", "exp", 0.5), ("warm_coupled", "linear", 0.5)],
+           "t": [("warm_coupled", "exp", 0.5)],
+           "beta": [("warm_coupled", "exp", 0.25)],
+           "gamma": [("precip_scaling", "exp", 0.2), ("precip_scaling", "linear", 0.2),
+                     ("precip_shape", "exp", 0.2)]}
+
+
+def coupled_scenarios(family):
+    return [pa.NULL] + [pa.Change(*c) for c in COUPLED.get(family, [])]
+
+
 def path_for(family, ch, k, T, phi, r):
     return OUT / f"{family}_{ch.knob}_{ch.shape}_{ch.amount:g}_k{k}_T{T}_phi{phi:.2f}_r{r}.npz"
 
@@ -91,6 +106,10 @@ def main():
     p.add_argument("--workers", type=int, default=None)
     p.add_argument("--skip-existing", action="store_true")
     p.add_argument("--nice", type=int, default=19)
+    p.add_argument("--coupled", action="store_true",
+                   help="run the covariate-model test cases instead of the standard changes")
+    p.add_argument("--rescore", action="store_true",
+                   help="only rescore saved scenarios (adds the further MLE estimators)")
     args = p.parse_args()
     if hasattr(os, "nice") and args.nice > 0:
         os.nice(args.nice)
@@ -98,9 +117,11 @@ def main():
     for T in args.T:
         for k in args.k:
             for family in args.families:
-                for ch in scenarios(family):
+                for ch in (coupled_scenarios if args.coupled else scenarios)(family):
                     path = path_for(family, ch, k, T, args.phi, args.r)
-                    if args.skip_existing and path.exists():
+                    if args.rescore and not path.exists():
+                        continue
+                    if (args.skip_existing or args.rescore) and path.exists():
                         res = stage_c.load(path)
                         print(f"{path.name}: reused", flush=True)
                     else:
@@ -111,10 +132,11 @@ def main():
                         stage_c.save(res, path)
                         print(f"{family:6s} {ch.label:22s} k={k} T={T}: {args.N} fits in "
                               f"{time.time() - t0:.0f} s", flush=True)
-                    rows = stage_c.score_rows(res, cache_dir=CACHE)
+                    extra = stage_c.extra_estimates(res, workers=args.workers or 4, cache_dir=OUT)
+                    rows = stage_c.score_rows(res, cache_dir=CACHE, extra=extra)
                     write_rows(rows)
                     for r in rows:
-                        if r["p"] == 0.99 and r["estimator"] in ("trend", "tvp_median"):
+                        if r["p"] == 0.99 and r["estimator"] in ("trend", "trend3", "cov3", "tvp_median"):
                             print(f"   {r['estimator']:10s} X99 last year: true exceedance median "
                                   f"{100 * r.get('exc_med_last', float('nan')):.2f}%, >2%: "
                                   f"{100 * r.get('exc_gt2x_last', float('nan')):.0f}% of panels"

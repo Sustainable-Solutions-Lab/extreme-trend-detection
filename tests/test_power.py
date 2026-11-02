@@ -138,3 +138,23 @@ def test_split_statistics():
     assert sp1[4] - sp1[1] == pytest.approx(2.0, abs=0.4)  # second-half mu minus first-half mu
     full = power.panel_statistics(X1, (0.0, 1.0, 0.1))
     assert full[power.STATS.index("split_lr")] == pytest.approx(sp1[0], rel=1e-6)
+
+
+def test_covariate_fit_recovers_and_nests_location_trend():
+    from scipy.stats import genextreme
+    from tvextremes.mle import fit_local
+    from tvextremes.pseudo import time_index
+    from tvextremes.trend_tests import fit_gev_covariate, fit_gev_trend
+    rng = np.random.default_rng(1)
+    T = 3000
+    c = time_index(T) * 2.0 - 1.0
+    mu, sig, xi = 1 + 0.25 * c, np.exp(-0.3 + 0.2 * c), -0.2 + 0.1 * c
+    X = genextreme.rvs(-xi, loc=mu, scale=sig, random_state=rng)[:, None]
+    f = fit_gev_covariate(X, c)
+    np.testing.assert_allclose(f.beta, [[1, 0.25], [-0.3, 0.2], [-0.2, 0.1]], atol=0.06)
+    X2 = X[:85]
+    con = fit_local(X2, (1.5, 0.9, 0.0))
+    a = fit_gev_covariate(X2, time_index(85), start=con, vary=("mu",))
+    b = fit_gev_trend(X2, start=con)
+    assert a.loglik == pytest.approx(b.loglik, abs=1e-6)
+    assert a.beta[0, 1] == pytest.approx(b.mu1, rel=1e-4)

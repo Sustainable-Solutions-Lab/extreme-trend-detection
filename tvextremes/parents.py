@@ -43,7 +43,12 @@ FAMILIES = ("normal", "gamma", "t", "tanh", "beta")
 BASE_TAIL = {"normal": None, "gamma": 2.0, "t": 6.0, "tanh": 3.0, "beta": 4.0}
 TAIL_NAME = {"gamma": "shape a", "t": "degrees of freedom", "tanh": "headroom c = L/s",
              "beta": "b (xi = -1/b)"}
-KNOBS = ("mean", "width", "tail", "alpha", "capped_warming")
+KNOBS = ("mean", "width", "tail", "alpha", "capped_warming", "warm_coupled", "precip_scaling",
+         "precip_shape")
+# Coupled changes (covariate-model test cases): width and tail move with the mean.
+COUPLE_WIDTH = 0.25       # d log s / d m: width grows 25% per daily sd of warming
+COUPLE_TAIL = -0.2        # d log(tail parameter) / d m: heavier (t, gamma) or longer (beta) upper tail
+PRECIP_SHAPE = -0.5       # d log(gamma shape) / d log(scale) for precip_shape: heavier tail when wetter
 SHAPES = ("linear", "step50", "step80", "exp")
 DAYS = 365
 BETA_SCALE = np.sqrt(2 * 4.0 + 1)          # = 3; fixed, so the bounds do not move with alpha, beta
@@ -128,6 +133,17 @@ def transform(family, z_top, m, s, tail):
     return m + s * standard_eps(family, z_top, tail)
 
 
+def annual_mean(family, z, T, m, s, tail, days=DAYS):
+    """Annual mean of the daily series X (n, T) from the daily Gaussian series z (n, T*days):
+    the covariate an analyst can compute from all days of each year."""
+    z = np.asarray(z, float).reshape(z.shape[0], T, days)
+    tl = None if tail is None else np.asarray(tail, float)
+    if tl is not None:
+        tl = tl[:, None, :] if tl.ndim == 2 else tl[:, None]
+    eps = standard_eps(family, z, tl).mean(axis=2)
+    return np.asarray(m, float) + np.asarray(s, float) * eps
+
+
 # ---------------------------------------------------------------------------
 # Alternatives
 # ---------------------------------------------------------------------------
@@ -200,6 +216,32 @@ def parameter_paths(family, change: Change, T, tail0=None):
         if family != "beta":
             raise ValueError("alpha applies to the beta parent only")
         tail[:, 0] = tail0 * np.exp(g)
+    elif change.knob == "warm_coupled":
+        # Temperature-like: the mean rises along g and the width and tail follow the mean, so
+        # every parameter is a monotone function of the mean state (not of time).
+        m = m + g
+        s = np.exp(COUPLE_WIDTH * m)
+        if family == "beta":
+            tail[:, 1] = tail0 * np.exp(COUPLE_TAIL * m)
+        elif tail is not None:
+            tail = tail0 * np.exp(COUPLE_TAIL * m)
+    elif change.knob in ("precip_scaling", "precip_shape"):
+        # Precipitation-like (gamma only): the raw variable R = theta G, G ~ gamma(a), has its mean
+        # scaled by lam_t = exp(g), so the mean rises in proportion (Clausius-Clapeyron-type
+        # scaling). precip_scaling keeps the shape a, so every quantile scales by lam_t too;
+        # precip_shape also lowers a (heavier tail when wetter) with the mean still lam_t times
+        # baseline. In baseline-sd units (theta0 = 1/sqrt(a0)), R = sqrt(a0) + X at baseline, so
+        # X = R - sqrt(a0) = m + s eps with s = sqrt(a) theta and m = a theta - sqrt(a0).
+        if family != "gamma":
+            raise ValueError(f"{change.knob} applies to the gamma parent only")
+        lam = np.exp(g)
+        a = np.full(T, float(tail0))
+        if change.knob == "precip_shape":
+            a = tail0 * np.exp(PRECIP_SHAPE * g)
+        theta = lam * np.sqrt(tail0) / a                # mean a theta = lam sqrt(a0)
+        tail = a
+        s = np.sqrt(a) * theta
+        m = a * theta - np.sqrt(tail0)
     elif change.knob == "capped_warming":
         if family != "tanh":
             raise ValueError("capped_warming applies to tanh; for the beta use the alpha knob")

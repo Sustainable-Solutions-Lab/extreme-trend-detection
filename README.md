@@ -282,7 +282,39 @@ data:
      halves of the record). It also compares estimated return levels X_p (the level that 50%, 90%,
      95% or 99% of annual maxima stay below) with the truth implied by the generating function,
      and tests sensitivity to record length (30, 45, 85 and 150 years).
-4. A TVP-GEV/exceedance model in Stan (via cmdstanpy), adapted from the authors' models, with
-   importance reweighting and Bayes factors. Check that it recovers known paths.
-5. ERA5: build k-largest or exceedance panels per grid cell or region, decluster to handle serial
-   dependence, then run the tests and the TVP model.
+   - Stage B is done (results in `data/results/stage_b_*.csv`). With one value per year all
+     tests hold their 5% size at any persistence; several values per year from a persistent
+     daily series inflate false alarms badly unless the extremes are declustered.
+4. Stage C (running): how well is the 99% level predicted? The authors' Bayesian model with four
+   random walks (Stan, via cmdstanpy) and the MLE estimators are fitted to the same Stage B
+   records and scored on the true exceedance probability of the estimated level in the most
+   recent year, level errors and credible-interval coverage; 30, 45 and 85 years, one or three
+   values per year. Importance reweighting and Bayes factors are not yet done.
+5. Alternative models for the change in return levels (see below).
+6. ERA5: build k-largest or exceedance panels per grid cell or region, decluster to handle serial
+   dependence, then run the tests and the estimators.
+
+### Alternative models for the change (planned)
+
+The Bayesian model lets every parameter wander as a random walk, which asks a lot of a few
+decades of extremes. Two more constrained models are probably closer to what the data can
+support:
+
+1. **Linear trends in all three GEV parameters.** μ_t, log σ_t and ξ_t each linear in time. This
+   extends the location-only trend fit, which misses changes in width and tail. Being in progress
+   as a further Stage C estimator (`trend3`), scored on the same records.
+2. **Parameters as monotone functions of the mean state (covariate model).** The GEV parameters
+   depend on a covariate c_t, e.g. μ_t = a_μ + b_μ c_t, log σ_t = a_σ + b_σ c_t,
+   ξ_t = a_ξ + b_ξ c_t, where c_t is a smoothed estimate of the local mean (or a global-mean
+   temperature series). This asks how the distribution changes as the location warms (for
+   temperature) or as mean precipitation rises (for precipitation), and lets nonlinear change in
+   time enter through c_t. It needs test cases where it is the correct model, for example:
+   - *Temperature-like:* a warming path that is flat and then accelerates, with the width and
+     tail of the daily distribution changing in proportion to the warming.
+   - *Precipitation-like:* a gamma parent whose scale is proportional to the mean, so every
+     quantile scales with the mean (a Clausius–Clapeyron-type change), possibly with the shape
+     changing too.
+   The covariate would be estimated from all days of the year, not just the extremes, so it
+   carries much more information than the extremes alone. Each case should also be fitted with
+   the time-trend and Bayesian models, to see how much is lost when the change is not linear
+   in time.
