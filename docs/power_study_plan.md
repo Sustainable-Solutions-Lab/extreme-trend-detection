@@ -178,10 +178,42 @@ T = 150 a long station record. Results are committed after each step.
 - The full record-length grid (all φ and k).
 - Declustering gap r = 7 days.
 
-## Stage C (later, separate): recovery of known paths
+## Stage C: how well are return levels predicted?
 
-Check that the Bayesian TVP model recovers the true parameter paths and credible-interval coverage.
-This needs the Stan model and is not part of this study.
+The question is not only whether time variation can be detected, but how well each method
+predicts a return level such as X_0.99, the level the annual maximum exceeds in 1% of years,
+especially in the most recent year.
+
+**Estimators**, all fitted to the same simulated panels:
+- `const`: constant-parameter GEV (ignores change).
+- `trend`: GEV with a linear trend in location.
+- `split`: separate GEV fits to the two halves.
+- `tvp_mean`, `tvp_median`: posterior mean and median of X_p(t) from the authors' Bayesian model
+  with four random walks (`stan/gev_4rw.stan`, their `GEV_4RW_Model.stan` with leaner output;
+  `tests/test_stage_c.py` checks the log density is identical). Their prior settings: ξ in
+  (−0.9, 2.1), random-walk scale factors 1.0 (ξ), 0.5 (α), 0.5 (s), exponential(1) priors on the
+  unscaled innovation sds.
+
+**MCMC:** 4 chains of 1,000 warmup and 1,000 sampling iterations, `adapt_delta` 0.95. The authors
+use 5,000 + 10,000 for single published fits, which is too slow for a Monte Carlo study. With
+0.9 a few percent of transitions diverged; 0.95 cuts that to about 0.5%, and the estimated
+X_0.99 did not change (to 0.02) between 0.9, 0.95 and 0.99. Divergences, R-hat and ESS are stored
+for every fit.
+
+**Data:** Stage B's parent-distribution generator, so the true X_p(t) is known exactly.
+
+**Metrics** (`tvextremes.stage_c.score_rows`), for p = 0.5, 0.9, 0.99:
+- *True exceedance probability* of the estimated level in the last year (ideal 1 − p), its
+  median and mean over panels, and the share of panels where it exceeds 2(1 − p) (risk understated
+  by more than a factor of 2).
+- Bias and RMSE of the level in the last year and over all years (units of the daily parent sd).
+- Bias and RMSE of the estimated change, first year to last.
+- Bayesian only: coverage and width of the 90% credible interval, last year and all years.
+
+**First run** (`scripts/stage_c.py`): T = 85, k = 1, φ = 0.5, 100 panels per scenario. Per
+parent: no change, a linear and a mid-record step change in the mean, a linear change in width,
+a linear tail change (gamma, t, beta) and, for the beta, a change in α. Amounts are mid-range
+Stage B values (detected roughly half to most of the time).
 
 A time-reversal check belongs here too: fit the model to the data in reverse order and check that
 the estimated paths come out reversed. For the constant-parameter fits, Nyblom, trend LR and

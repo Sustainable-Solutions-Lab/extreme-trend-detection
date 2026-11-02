@@ -8,3 +8,7 @@ data/input/
 data/output/
 .vscode/*
 !.vscode/settings.json
+
+# Compiled Stan executables (built by cmdstanpy next to the .stan file)
+stan/*
+!stan/*.stan
