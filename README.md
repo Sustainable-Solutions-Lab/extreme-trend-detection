@@ -46,7 +46,8 @@ tvextremes/
                   hump, random walk in mu, sigma or xi)
   trend_tests.py  baselines: GEV with a linear trend in location (LR test), Mann-Kendall
   power.py        power study: simulate a design, nominal and size-adjusted rejection rates
-  parents.py      Stage B: daily AR(1) Gaussian series mapped to known parents, k largest per year
+  parents.py      Stage B: daily AR(1) Gaussian series mapped to known parents (normal, gamma,
+                  Student-t, beta; tanh-normal available but not run), k largest per year
                   with declustering, exact truth for annual-maximum quantiles
   stage_b.py      Stage B: simulate a configuration, size/power and return-level accuracy
 scripts/
@@ -274,8 +275,8 @@ data:
 2. ~~Nyblom stability test~~ done; the joint L* test still to do.
 3. Pseudo-data size and power studies (`docs/power_study_plan.md`).
    - Stage A (exact GEV_k data with known paths) is done; see the results above.
-   - Stage B (daily data from known parents: normal, gamma, Student-t, tanh-normal and beta,
-     with serial correlation) is running. It measures size and power when the extremes are only
+   - Stage B (daily data from known parents: normal, gamma, Student-t and a bounded beta, with
+     serial correlation) is running. It measures size and power when the extremes are only
      approximately GEV. It also compares estimated return levels X_p (the level that 50%, 90%,
      95% or 99% of annual maxima stay below) with the truth implied by the generating function,
      and tests sensitivity to record length (30, 45, 85 and 150 years).

@@ -78,16 +78,17 @@ is mapped through the parent's quantile function:
 where m_t (centre), s_t (width) and the tail parameter vary between years but are constant within
 a year (`tvextremes/parents.py`).
 
-**Parents** (the raised cosine was dropped; the beta replaces it as the bounded case with an
-exact tail index):
+**Parents.** Two candidates were dropped. The raised cosine went because the beta is the bounded
+case with an exact tail index. Tanh-normal (soft cap, c·tanh(Z/c)) went because the beta already
+gives a bounded variable whose location, width and tail can all change; its code stays in
+`parents.py`.
 
 | Parent | ε | Tail parameter | Notes |
 |---|---|---|---|
 | Normal | Z | — | light tail; ξ → 0 slowly |
 | Gamma | standardized gamma(a) | shape a = 2 | skewed, like precipitation |
 | Student-t | standardized t_ν | ν = 6 | heavy tail, ξ = 1/ν |
-| Tanh-normal | c·tanh(Z/c) | headroom c = 3 | soft cap at m + s·c; formally ξ = 0, fitted ξ̂ ≈ −0.27 |
-| Beta | rescaled beta(b, b) | b = 3 | hard cap; ξ = −1/b exactly |
+| Beta | (2B − 1)·√7, B ~ beta(α = β = b) | b = 3 | hard cap at ±√7 daily sd; ξ = −1/b exactly |
 
 For a given year the map from Z to X is increasing. So the k largest values of X fall on the same
 days as the k largest of Z, and declustering picks the same days. Selection is therefore done
@@ -105,14 +106,21 @@ in a fraction p of years:
 | Knob | Moves | Sizes (over the record) |
 |---|---|---|
 | mean | m_t, all parents | 0.1, 0.25, 0.5, 1 daily sd |
-| width | s_t, all parents (tanh: cap stretches with it) | 0.05, 0.1, 0.2, 0.4 in log s |
-| tail | gamma a, t ν, tanh c, beta b | 0.25, 0.5, 1, 1.5 in log of the parameter |
-| capped warming | tanh and beta: m rises, absolute cap fixed | 0.1, 0.25, 0.5, 1 daily sd |
+| width | s_t, all parents (beta: cap stretches with it) | 0.05, 0.1, 0.2, 0.4 in log s |
+| tail | gamma a, t ν, beta b | 0.25, 0.5, 1, 1.5 in log of the parameter (beta: 0.2–0.8) |
+| capped warming | beta: m rises, absolute cap fixed | 0.1, 0.25, 0.5, 1 daily sd |
 
 - **Central case:** no change.
 - **Path shapes:** linear, step at mid-record, step at 80%, and exponential.
 - **Direction:** only upward changes are run. Every statistic is invariant under time reversal
   (tested), so a downward change gives the same results as the reversed upward one.
+- **Beta tail changes are limited** to log b changes of at most 0.8, so b ≥ 2 in every year
+  (true ξ ≥ −0.5). Below that, GEV maximum likelihood is irregular (Smith 1985): the fitted
+  endpoint hugs the sample maximum and the information matrix used by the Nyblom test does not
+  exist. A first run with b down to 1.4 (ξ = −0.71) had about 1% failed fits overall, nearly all
+  in that one case.
+- **The beta tail knob also changes the width.** Tying α = β moves both ends, and the √7 scale
+  is fixed at b = 3, so the daily variance is 7/(2b + 1): 1.4 at b = 2 and 0.55 at b = 5.7.
 - **Capped warming** is the bounded case in which location, width and tail of the extremes all
   change together, as the headroom to a fixed limit shrinks.
 
@@ -136,10 +144,10 @@ each change (±1.1 points on a 50% power).
 
 | Step | What | Estimated time |
 |---|---|---|
-| 1 | T = 85, k = 1, φ ∈ {0, 0.5, 0.8}, all 5 parents | 1.6 h |
-| 2 | T = 85, k = 3, same grid | 1.6 h |
-| 3 | Record length: Nyblom calibration, then T ∈ {30, 45, 150}, k = 1, φ = 0.5, all parents | 1.8 h |
-| 4 | T = 85, k = 10, φ = 0.8, without declustering and with r = 3 days | 2.1 h |
+| 1 | T = 85, k = 1, φ ∈ {0, 0.5, 0.8}, all 4 parents | 1.2 h |
+| 2 | T = 85, k = 3, same grid | 1.2 h |
+| 3 | Record length: Nyblom calibration, then T ∈ {30, 45, 150}, k = 1, φ = 0.5, all parents | 1.5 h |
+| 4 | T = 85, k = 10, φ = 0.8, without declustering and with r = 3 days | 1.6 h |
 
 T = 30 is a climate-normal period, T = 45 the satellite era (1979 onward), T = 85 ERA5, and
 T = 150 a long station record. Results are committed after each step.

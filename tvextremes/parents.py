@@ -205,6 +205,12 @@ def default_changes(family):
     # so a mean shift of 0.25 daily sd is already ~0.7 GEV sigma.
     amounts = {"mean": (0.1, 0.25, 0.5, 1.0), "width": (0.05, 0.1, 0.2, 0.4),
                "tail": (0.25, 0.5, 1.0, 1.5), "capped_warming": (0.1, 0.25, 0.5, 1.0)}
+    if family == "beta":
+        # Keep b >= 2 (true xi >= -0.5) in every year, where GEV maximum likelihood is regular
+        # (Smith 1985). Below that the fitted endpoint hugs the sample maximum and the
+        # information matrix used by the Nyblom test does not exist. With b0 = 3 the most
+        # negative centred path value is -0.5 (linear, step50), so log b changes <= 0.8.
+        amounts["tail"] = (0.2, 0.4, 0.6, 0.8)
     knobs = ["mean", "width"]
     if BASE_TAIL[family] is not None:
         knobs.append("tail")
