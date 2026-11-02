@@ -65,35 +65,68 @@ for one design took 8 minutes at N = 40,000, so this is cheap.
 
 ## Stage B: parent-distribution data (robustness of size, then power)
 
-Simulate daily series, take the k largest per year, and run the same tests.
-- Parents:
-  - Gaussian: light tail; ξ → 0 slowly.
-  - Gamma or Weibull: like precipitation.
-  - Student-t with 4–10 degrees of freedom: heavy tail.
-  - Raised cosine, density (1 + cos(π(x − µ)/s))/(2s) on [µ − s, µ + s]. Bounded, with a density
-    that vanishes quadratically at the endpoint, so ξ = −1/3 exactly. Annual-maximum fits give
-    ξ̂ = −0.35, a clean check of the bounded-tail (ξ < 0) case.
-  - Tanh-normal (soft-saturating): X = c·tanh(Z/c), Z ~ N(0, 1). It is normal for |Z| ≪ c and
-    saturates at ±c (physically, a cap such as a wet-bulb or soil-moisture limit). It is an affine
-    transform of the logit-normal, since tanh(u) = 2·logistic(2u) − 1. Its tail near the cap
-    decays faster than any power, so it is formally in the Gumbel domain (ξ = 0). In finite
-    blocks, though, the fitted ξ̂ is clearly negative and depends on c (annual maxima: −0.44,
-    −0.24, −0.17 for c = 1.5, 3, 5). It is the main test of what happens when "the" ξ is not a
-    stable constant.
-  - Warming for the saturating parents can enter as a shift in the latent mean (Z → Z + δ_t) with
-    a fixed cap. Then the extremes approach the cap, their trend flattens, and the effective ξ
-    drifts downward. That is a change in shape the paper's model would read as time variation
-    in ξ. Also run a version where the cap itself moves.
-- Serial correlation: AR(1) with φ ∈ {0, 0.5, 0.8}, the range seen in daily temperature anomalies.
-- Seasonality: a seasonal cycle in mean and variance, so the yearly maximum comes mostly from
-  one season.
-- Block size: 365 days, and the 92 days of a single season.
+Simulate daily series from a known parent, take the k largest per year, and run the same tests.
+The parent and its change are known exactly. The GEV parameters of the extremes are not: the
+yearly maxima are only approximately GEV, and that is what this stage measures.
+
+**Parents** (four; the raised cosine was dropped because tanh-normal covers bounded tails):
+- Normal: light tail; ξ → 0 slowly.
+- Gamma: skewed, like precipitation.
+- Student-t with 4–10 degrees of freedom: heavy tail.
+- Tanh-normal (soft cap): see below.
+
+**One form for every parent.** Daily value X = m_t + s_t · ε, where ε is the standardized parent
+draw. For tanh-normal,
+
+    X = m_t + L_t · tanh(s_t · Z / L_t),   Z ~ N(0, 1)
+
+which looks normal for s·Z ≪ L and saturates at m ± L (a wet-bulb or soil-moisture type
+limit). The parameters m_t, s_t, L_t vary between years but are constant within a year. Because
+tanh is monotone, the k largest of X are the k largest of Z passed through the same map, so the
+true distribution of the annual extremes, and true return levels, are exact for every year.
+Notes on tanh-normal:
+- It is an affine transform of the logit-normal, since tanh(u) = 2·logistic(2u) − 1.
+- Its tail decays faster than any power, so formally ξ = 0.
+- Finite-block fits give a clearly negative ξ̂ that depends on c = L/s: annual maxima give
+  −0.44, −0.24 and −0.17 for c = 1.5, 3 and 5.
+
+**Changes**, one knob at a time, mirroring the three GEV parameters:
+
+| Knob | Normal | Gamma | Student-t | Tanh-normal |
+|---|---|---|---|---|
+| Mean | m_t | m_t | m_t | m_t |
+| Width | s_t | s_t | s_t | s_t and L_t together (s/L fixed) |
+| Tail | — | gamma shape | degrees of freedom | headroom c_t = L_t/s_t |
+
+- **Central case:** no change (m, s, L and the tail all constant). It gives the false-alarm rate.
+- **Changing cases:** each knob follows a known path: linear, step (mid-record and at 80%) or
+  exponential, both up and down, at about 4 sizes from small to large.
+- **Tanh-normal warming toward a fixed limit:** add a variant where m rises and the absolute cap
+  m + L stays fixed. This is the headroom-shrinking case in which the trend in extremes flattens.
+
+**Dependence and season:**
+- Serial correlation: AR(1) in ε with φ ∈ {0, 0.5, 0.8}, the range seen in daily temperature
+  anomalies.
+- Seasonality: a seasonal cycle in mean and variance, so the yearly maximum comes mostly from one
+  season. Run on a subset only, since it doubles the cost.
 - Declustering for k > 1: take the k largest values separated by at least r days, with
   r ∈ {0, 3, 7}. This shows whether clusters (one heatwave giving several of the k largest) break
   the size of the k > 1 designs.
 
-First measure size (b = 0). Then measure power for a trend in the parent mean or variance, which is
-how warming actually enters, rather than a trend in the GEV parameters directly.
+**Designs and replicates:**
+- Designs: T = 85 with k ∈ {1, 3, 10}.
+- Replicates: 2,000 per changing case, which gives ±1.1 percentage points on a 50% power. Use
+  10,000 for the no-change cases, which gives ±0.22 points on a 5% size.
+- Size: about 4 parents × ~35 cases × 3 k × 3 φ ≈ 1,300 cases. At roughly 5–15 s each on 14
+  cores, that is about 4 hours.
+
+**Scoring:**
+- Size: any rejection under no change is a false alarm.
+- Power: against the known size of the change in the parent.
+- Accuracy: fitted return levels and their trends against the exact truth. The truth is analytic
+  for independent days (F^365) and comes from very large simulations when there is serial
+  correlation. For tanh-normal, also check whether the fitted GEV upper endpoint µ − σ/ξ lands
+  near the true cap.
 
 ## Stage C (later, separate): recovery of known paths
 
