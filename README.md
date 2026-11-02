@@ -277,7 +277,9 @@ data:
    - Stage A (exact GEV_k data with known paths) is done; see the results above.
    - Stage B (daily data from known parents: normal, gamma, Student-t and a bounded beta, with
      serial correlation) is running. It measures size and power when the extremes are only
-     approximately GEV. It also compares estimated return levels X_p (the level that 50%, 90%,
+     approximately GEV, comparing the paper's Nyblom test with the GEV linear-trend test,
+     Mann–Kendall, and a simple two-segment test (separate GEV fits to the early and recent
+     halves of the record). It also compares estimated return levels X_p (the level that 50%, 90%,
      95% or 99% of annual maxima stay below) with the truth implied by the generating function,
      and tests sensitivity to record length (30, 45, 85 and 150 years).
 4. A TVP-GEV/exceedance model in Stan (via cmdstanpy), adapted from the authors' models, with

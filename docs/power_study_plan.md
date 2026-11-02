@@ -130,16 +130,30 @@ in a fraction p of years:
 - **The β knob also changes the width.** The scale factor 3 is fixed at the baseline, so the daily
   variance is 9·Var(2B − 1), which moves with β (and α).
 
+**Two-segment test (added 2026-11-01).** Fit a GEV separately to the first and second halves
+of the record and test whether (µ, σ, ξ) differ: LR = ll(first) + ll(second) − ll(both), with 3
+restrictions. It asks only "are the two halves different?", the least demanding question about
+change, and it gives the most interpretable answer ("X₉₉ in the recent half vs the early
+half"). Each half is nearly homogeneous, so it does not hit the irregular fits that break the
+constant fit for large bounded changes (beta: 158 of 2,000 Nyblom failures and no split failures
+in the largest step). Expected weaknesses: a rise-then-fall change, and changes near the end of
+the record. Its nominal critical value is χ²₃ until it is calibrated like the paper's tests
+(`calibrate_cv.py --tests split`); summaries switch to the calibrated value automatically.
+
 **Scoring:**
-1. **Size and power:** the Nyblom test (ξ̂-adjusted), the GEV linear-trend LR test and
-   Mann–Kendall, at their nominal critical values and size-adjusted. The output is
+1. **Size and power:** the Nyblom test (ξ̂-adjusted), the GEV linear-trend LR test,
+   Mann–Kendall and the two-segment test, at their nominal critical values and size-adjusted.
+   Each test is scored on the replicates where its own fit succeeded, with failures counted per
+   test. The output is
    `data/results/stage_b_summary.csv`.
 2. **Return levels against the truth:** for p = 0.5, 0.9, 0.95 and 0.99, compare estimated X_p
    with the truth implied by the generating function. Scores are bias and RMSE, in the first year,
    in the last year, and for the change between them. The output is
    `data/results/stage_b_return_levels.csv`. Two estimators so far:
    - the constant-parameter GEV fit, which estimates no change;
-   - the GEV fit with a linear trend in location.
+   - the GEV fit with a linear trend in location;
+   - the two-segment fits: the first half scored against the first year, the second half against
+     the last year (the question "what is X_p now?").
 
    The Bayesian time-varying model (Stage C) will be scored the same way.
 

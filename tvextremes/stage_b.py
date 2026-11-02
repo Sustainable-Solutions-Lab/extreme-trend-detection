@@ -109,9 +109,14 @@ def summary_rows(res: ConfigResult, alpha=0.05):
     except KeyError:
         coef = None
     L, xh, lr, mk = S["nyblom"], S["xi_hat"], S["trend_lr"], np.abs(S["mk_z"])
+    sp = S["split_lr"]
+    try:
+        split_coef = cv.get_adjustment("split", res.k, res.T, alpha)
+    except KeyError:
+        split_coef = None
     j0 = res.null_index()
     oracle = {"nyblom": np.nanquantile(L[j0], 1 - alpha), "trend_lr": np.nanquantile(lr[j0], 1 - alpha),
-              "mk": np.nanquantile(mk[j0], 1 - alpha)}
+              "mk": np.nanquantile(mk[j0], 1 - alpha), "split": np.nanquantile(sp[j0], 1 - alpha)}
 
     def rate(x, ok):
         x = x[ok]
@@ -119,23 +124,34 @@ def summary_rows(res: ConfigResult, alpha=0.05):
 
     rows = []
     for j, ch in enumerate(res.changes):
+        sim = ~np.isnan(S["mk_z"][j])            # replicates simulated for this change
         ok = ~np.isnan(L[j])
+        ok_lr, ok_sp = ~np.isnan(lr[j]), ~np.isnan(sp[j])
         m, s, tail = pa.parameter_paths(res.family, ch, res.T)
         rl = pa.true_return_level(res.family, m, s, tail, 100)
         rl10 = pa.true_return_level(res.family, m, s, tail, 10)
         row = dict(family=res.family, tail0=pa.BASE_TAIL[res.family], k=res.k, T=res.T,
                    phi=res.phi, r=res.r, knob=ch.knob, shape=ch.shape, amount=ch.amount,
-                   N=int(ok.sum()), d_rl10_indep=float(rl10[-1] - rl10[0]), d_rl100_indep=float(rl[-1] - rl[0]),
-                   xi_hat_mean=rate(xh[j], ok))
-        # replicates that were simulated (Mann-Kendall present) but whose GEV fit failed
-        row["failures"] = int(np.isnan(L[j][~np.isnan(S["mk_z"][j])]).sum())
+                   N=int(sim.sum()), d_rl10_indep=float(rl10[-1] - rl10[0]), d_rl100_indep=float(rl[-1] - rl[0]),
+                   xi_hat_mean=rate(xh[j], ~np.isnan(xh[j])))
+        # replicates simulated but without a result, per test
+        row["failures"] = int((sim & ~ok).sum())
+        row["failures_trend"] = int((sim & ~ok_lr).sum())
+        row["failures_split"] = int((sim & ~ok_sp).sum())
         row["nyblom_nominal"] = (rate(cv.adjustment(coef, xh[j]) * L[j] > 1, ok)
                                  if coef is not None else np.nan)
-        row["trend_lr_nominal"] = rate(2 * lr[j] > chi2.ppf(1 - alpha, 1), ok)
-        row["mk_nominal"] = rate(mk[j] > norm.ppf(1 - alpha / 2), ok)
+        row["trend_lr_nominal"] = rate(2 * lr[j] > chi2.ppf(1 - alpha, 1), ok_lr)
+        row["mk_nominal"] = rate(mk[j] > norm.ppf(1 - alpha / 2), sim)
+        # split: xi_hat-adjusted critical value if calibrated, otherwise chi^2_3
+        if split_coef is not None:
+            row["split_nominal"] = rate(cv.adjustment(split_coef, xh[j]) * sp[j] > 1, ok_sp)
+        else:
+            row["split_nominal"] = rate(2 * sp[j] > chi2.ppf(1 - alpha, 3), ok_sp)
+        row["split_cv"] = "xi_adjusted" if split_coef is not None else "chi2_3"
         row["nyblom_sizeadj"] = rate(L[j] > oracle["nyblom"], ok)
-        row["trend_lr_sizeadj"] = rate(lr[j] > oracle["trend_lr"], ok)
-        row["mk_sizeadj"] = rate(mk[j] > oracle["mk"], ok)
+        row["trend_lr_sizeadj"] = rate(lr[j] > oracle["trend_lr"], ok_lr)
+        row["mk_sizeadj"] = rate(mk[j] > oracle["mk"], sim)
+        row["split_sizeadj"] = rate(sp[j] > oracle["split"], ok_sp)
         rows.append(row)
     return rows
 
@@ -148,8 +164,10 @@ def return_level_rows(res: ConfigResult, probs=RL_PROBS, cache_dir=None):
     generating function. One row per (change, p).
 
     X_p is the level that the annual maximum stays below in a fraction p of years. Two estimators:
-    'const' (constant-parameter GEV fit: the same X_p every year, so an estimated change of 0)
-    and 'trend' (GEV with a linear trend in location: mu_t = mu0 + mu1 (u_t - 1/2)). Each is
+    'const' (constant-parameter GEV fit: the same X_p every year, so an estimated change of 0),
+    'trend' (GEV with a linear trend in location: mu_t = mu0 + mu1 (u_t - 1/2)) and 'split'
+    (separate GEV fits to the two halves; the first-half fit is scored against the first year
+    and the second-half fit against the last year). Each is
     scored in the first year, the last year, and on the change between them: bias (mean error)
     and RMSE.
     """
@@ -157,13 +175,15 @@ def return_level_rows(res: ConfigResult, probs=RL_PROBS, cache_dir=None):
     S = {name: res.stats[..., i] for i, name in enumerate(STATS)}
     rows = []
     for j, ch in enumerate(res.changes):
-        ok = ~np.isnan(S["nyblom"][j]) & ~np.isnan(S["trend_mu0"][j])
-        if not ok.any():
+        sim = ~np.isnan(S["mk_z"][j])
+        if not sim.any():
             continue
         m, s, tail = pa.parameter_paths(res.family, ch, res.T)
-        mu, sg, xi = S["mu_hat"][j][ok], S["sigma_hat"][j][ok], S["xi_hat"][j][ok]
-        m0, m1 = S["trend_mu0"][j][ok], S["mu1_hat"][j][ok]
-        ts, tx = S["trend_sigma"][j][ok], S["trend_xi"][j][ok]
+        mu, sg, xi = S["mu_hat"][j][sim], S["sigma_hat"][j][sim], S["xi_hat"][j][sim]
+        m0, m1 = S["trend_mu0"][j][sim], S["mu1_hat"][j][sim]
+        ts, tx = S["trend_sigma"][j][sim], S["trend_xi"][j][sim]
+        h1 = [S[f"h1_{q}"][j][sim] for q in ("mu", "sigma", "xi")]
+        h2 = [S[f"h2_{q}"][j][sim] for q in ("mu", "sigma", "xi")]
         for p in probs:
             truth = pa.true_quantile_path(res.family, m, s, tail, p, res.phi, cache_dir=cache_dir)
             t_first, t_last = float(truth[0]), float(truth[-1])
@@ -172,8 +192,10 @@ def return_level_rows(res: ConfigResult, probs=RL_PROBS, cache_dir=None):
                    "trend": (gev_quantile(p, m0 - m1 / 2, ts, tx), gev_quantile(p, m0 + m1 / 2, ts, tx),
                              None)}
             est["trend"] = (est["trend"][0], est["trend"][1], est["trend"][1] - est["trend"][0])
+            s1, s2 = gev_quantile(p, *h1), gev_quantile(p, *h2)
+            est["split"] = (s1, s2, s2 - s1)
             row = dict(family=res.family, k=res.k, T=res.T, phi=res.phi, r=res.r, knob=ch.knob,
-                       shape=ch.shape, amount=ch.amount, p=p, N=int(ok.sum()),
+                       shape=ch.shape, amount=ch.amount, p=p, N=int(sim.sum()),
                        true_first=t_first, true_last=t_last, true_change=t_last - t_first)
             for name, (e_first, e_last, e_change) in est.items():
                 for which, e, t in (("first", e_first, t_first), ("last", e_last, t_last),
@@ -182,5 +204,7 @@ def return_level_rows(res: ConfigResult, probs=RL_PROBS, cache_dir=None):
                     err = err[np.isfinite(err)]
                     row[f"{name}_{which}_bias"] = float(err.mean()) if err.size else np.nan
                     row[f"{name}_{which}_rmse"] = float(np.sqrt(np.mean(err**2))) if err.size else np.nan
+                    if which == "change":
+                        row[f"{name}_n"] = int(err.size)
             rows.append(row)
     return rows

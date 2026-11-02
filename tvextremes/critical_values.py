@@ -15,6 +15,9 @@ unbiased). Tests, numbered as in the authors' code:
     2 "q90"     LR for q_0.9 = q0                      xi grid [-0.5, 1.5], 10 points
     3 "pareto"  LR for mu = sigma/xi                   xi grid [0.03, 1.5], 10 points
     4 "zipf"    LR for mu = sigma/xi and xi = 1        single DGP (xi = 1)
+    - "split"   two-segment LR (separate GEV fits to   xi grid [-0.5, 1.5], 10 points
+                the two halves vs one fit); not in
+                the paper, calibrated the same way
 
 The procedure follows the authors' Fortran (``Fortran/compute.f90``, ``adjcvmod.f90``):
 
@@ -48,7 +51,7 @@ from . import likelihood as lk
 from .mle import fit_local
 from .nyblom import nyblom_test
 
-TESTS = ("nyblom", "xi", "q90", "pareto", "zipf")
+TESTS = ("nyblom", "xi", "q90", "pareto", "zipf", "split")
 TEST_NUMBER = {name: i for i, name in enumerate(TESTS)}
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "calibration"   # committed to git
@@ -90,7 +93,7 @@ def null_dgp(test, xi):
     if test == "q90":
         q = float(lk.gev_quantile(0.9, mu, sigma, xi))
         return (mu, sigma, xi), dict(quantile=(q, 0.9))
-    return (mu, sigma, xi), None       # nyblom
+    return (mu, sigma, xi), None       # nyblom, split
 
 
 def draw_gammas(N, T, k, seed):
@@ -117,6 +120,11 @@ def statistic(test, X, truth, restriction):
         if not unr.success:
             return np.nan, np.nan
         return nyblom_test(X, unr, interior_tol=0.1), unr.xi
+    if test == "split":
+        from .power import split_statistics
+        if not unr.success:
+            return np.nan, np.nan
+        return split_statistics(X, unr)[0], unr.xi
     res = fit_local(X, truth, **restriction)
     if res.loglik > unr.loglik + 1e-9:            # unrestricted fit got stuck: retry from res
         unr2 = fit_local(X, res.params)

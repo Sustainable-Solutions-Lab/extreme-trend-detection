@@ -11,6 +11,11 @@ records, per panel:
 * mu_hat, sigma_hat  the rest of the constant-parameter fit (for return-level accuracy)
 * trend_mu0, trend_sigma, trend_xi  the rest of the linear-trend fit; with mu1_hat this gives the
   fitted location mu0 + mu1 (u_t - 1/2) for every year
+* split_lr two-segment test: separate GEV fits to the first T//2 and the remaining periods,
+  LR = ll(first) + ll(second) - ll(constant) (log-likelihood difference, 3 restrictions)
+* h1_*, h2_* the two half-record fits (mu, sigma, xi)
+
+Each statistic is NaN where its own fit failed; the others are unaffected.
 
 All alternatives reuse the same exponential draws and Brownian paths (common random numbers), so
 differences across alternatives and effect sizes are not blurred by independent noise. The null
@@ -41,7 +46,8 @@ from .nyblom import nyblom_test
 from .trend_tests import fit_gev_trend, mann_kendall
 
 STATS = ("nyblom", "xi_hat", "trend_lr", "mu1_hat", "mk_z", "mu_hat", "sigma_hat",
-         "trend_mu0", "trend_sigma", "trend_xi")
+         "trend_mu0", "trend_sigma", "trend_xi",
+         "split_lr", "h1_mu", "h1_sigma", "h1_xi", "h2_mu", "h2_sigma", "h2_xi")
 
 # Default alternatives. Amount units: mu in baseline sigma, sigma in log sigma, xi in xi.
 MU_AMOUNTS = (0.25, 0.5, 0.75, 1.0, 1.5, 2.0)
@@ -68,11 +74,10 @@ def panel_statistics(X, start):
     if fit2.success and (not fit.success or fit2.loglik > fit.loglik):
         fit = fit2
     if fit.success:
+        out[1], out[5], out[6] = fit.xi, fit.mu, fit.sigma
         try:        # numerical failures (e.g. a non-finite information matrix) count as failed fits
             with np.errstate(all="ignore"):
                 out[0] = nyblom_test(X, fit, interior_tol=0.1)
-            out[1] = fit.xi
-            out[5], out[6] = fit.mu, fit.sigma
         except (np.linalg.LinAlgError, ValueError, FloatingPointError):
             pass
         try:
@@ -83,8 +88,43 @@ def panel_statistics(X, start):
                 out[3], out[7], out[8], out[9] = tr.mu1, tr.mu0, tr.sigma, tr.xi
         except (np.linalg.LinAlgError, ValueError, FloatingPointError):
             pass
+        out[10:17] = split_statistics(X, fit)
     if X.shape[0] > 2:
         out[4] = mann_kendall(X[:, 0])[0]
+    return out
+
+
+def split_statistics(X, constant):
+    """Two-segment test: (LR, mu1, sigma1, xi1, mu2, sigma2, xi2), NaN where a half-fit fails.
+
+    The record is split after T//2 periods. Each half is fitted from the constant fit, or from a
+    robust data-based start if that fails. LR is clipped at 0 (the halves nest the constant model).
+    """
+    out = np.full(7, np.nan)
+    h = X.shape[0] // 2
+    fits = []
+    with np.errstate(all="ignore"):
+        for part in (X[:h], X[h:]):
+            best = None
+            # Start from the constant fit; fall back to a data-based start only if that fails
+            # (the fallback is slow for heavy tails, where the sample sd is a poor scale).
+            for st in (constant.params,
+                       (float(np.median(part[:, 0])), float(max(np.subtract(*np.percentile(
+                           part[:, 0], [75, 25])), 1e-3)), 0.1)):
+                try:
+                    f = fit_local(part, st)
+                except (np.linalg.LinAlgError, ValueError, FloatingPointError):
+                    continue
+                if f.success and np.isfinite(f.loglik):
+                    best = f
+                    break
+            fits.append(best)
+    if fits[0] is not None:
+        out[1:4] = fits[0].params
+    if fits[1] is not None:
+        out[4:7] = fits[1].params
+    if fits[0] is not None and fits[1] is not None:
+        out[0] = max(fits[0].loglik + fits[1].loglik - constant.loglik, 0.0)
     return out
 
 

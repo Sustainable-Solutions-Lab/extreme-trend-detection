@@ -120,3 +120,21 @@ def test_reversed_path_is_reversed_alternative():
         b = pseudo.parameter_paths(pseudo.Alternative(p, "linear", -0.3), T, (0.0, 1.0, 0.1))
         for x, y in zip(a, b):
             np.testing.assert_allclose(x[::-1], y, atol=1e-12)
+
+
+def test_split_statistics():
+    rng = np.random.default_rng(21)
+    T = 85
+    gam = np.cumsum(rng.standard_exponential((T, 3)), axis=1)
+    X0 = pseudo.gev_k_panel(gam, 0.0, 1.0, 0.1)
+    const = fit_local(X0, (0.0, 1.0, 0.1))
+    sp = power.split_statistics(X0, const)
+    assert np.all(np.isfinite(sp)) and sp[0] < 6           # no change: small LR
+    mu, s, xi = pseudo.parameter_paths(pseudo.Alternative("mu", "step50", 2.0), T, (0.0, 1.0, 0.1))
+    X1 = pseudo.gev_k_panel(gam, mu, s, xi)
+    const1 = fit_local(X1, (0.0, 1.0, 0.1))
+    sp1 = power.split_statistics(X1, const1)
+    assert sp1[0] > 20
+    assert sp1[4] - sp1[1] == pytest.approx(2.0, abs=0.4)  # second-half mu minus first-half mu
+    full = power.panel_statistics(X1, (0.0, 1.0, 0.1))
+    assert full[power.STATS.index("split_lr")] == pytest.approx(sp1[0], rel=1e-6)

@@ -239,8 +239,14 @@ def default_changes(family):
         # only for xi > -0.5 (Smith 1985), and a constant GEV fitted across a large change in a
         # bounded variable is pushed well below the true xi (to about -0.9), where the fitted
         # endpoint hugs the sample maximum and the Nyblom information matrix does not exist.
-        # With beta0 = 4 the most negative centred path value is -0.5, so log changes <= 0.8.
-        amounts["tail"] = (0.2, 0.4, 0.6, 0.8)
+        # With beta0 = 4 the most negative centred path value is -0.5, so log changes <= 0.8;
+        # the sizes below stay well inside that (beta >= 3.27).
+        amounts["tail"] = (0.05, 0.1, 0.2, 0.4)
+        # The beta maxima sit close to the cap with a small spread, so changes of the size used
+        # for the unbounded parents already give power ~1; these sizes keep the curves informative.
+        amounts["mean"] = (0.05, 0.1, 0.25, 0.5)
+        amounts["width"] = (0.025, 0.05, 0.1, 0.2)
+        amounts["alpha"] = (0.1, 0.25, 0.5, 1.0)
     knobs = ["mean", "width"]
     if BASE_TAIL[family] is not None:
         knobs.append("tail")
