@@ -5,6 +5,7 @@
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{float}
 \usepackage{xcolor}
 \usepackage[hidelinks]{hyperref}
@@ -20,16 +21,16 @@
 \begin{document}
 \maketitle
 
-\section*{Summary}
+\section*{Abstract}
 
-\paragraph{In brief.}
 \emph{Questions and approach.} We asked three questions about the methods of M\"uller and Watson
 (2024) for extremes that change over time: how reliably they detect a change, how accurately they
 estimate the current 1-in-100-year level, and what happens when the model of the change is wrong.
 To answer them against a known truth, we generated synthetic daily records of 30 to 150 years from
 four distributions (temperature-like, precipitation-like, heavy-tailed and bounded), changed their
 mean, spread or tail in known ways, and applied the tests and estimators to the annual maxima:
-thousands of records per case for the tests and 100 per case for the estimates.
+thousands of records per case for the tests and 100 per case for the estimates
+(Table~\ref{tab:design} lists the dimensions varied).
 
 \emph{Detection.} The parameter-constancy (Nyblom) test of M\"uller and Watson (2024) is a reliable
 detector of change in annual maxima: with one value per year its false-alarm rate stays at
@@ -56,7 +57,8 @@ weighted by how well it fits the data, comes close to the best single model what
 is the safest choice when the driver is unknown. With 30 years of data, sampling noise dominates and
 the choice of model matters little.
 
-\paragraph{Extended summary.}
+\section*{Summary}
+
 We reimplemented the time-varying-extremes methods of M\"uller and Watson (2024) in Python,
 reproduced their published estimates and test statistics, and tested the methods on synthetic
 data for which the truth is known exactly. Daily series were drawn from four parent
@@ -139,6 +141,38 @@ matter:
 
 %=====================================================================================
 \section{Methods}
+
+\subsection{Study design at a glance}
+
+Table~\ref{tab:design} lists the dimensions we varied. It is not a full factorial: the persistence
+and values-per-year variations were run mainly at 85 years, and the quantification study uses one
+size of change per case.
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.19\textwidth}>{\raggedright\arraybackslash}p{0.36\textwidth}>{\raggedright\arraybackslash}p{0.36\textwidth}}
+\toprule
+ & \textbf{Detection} (is there a change?) & \textbf{Quantification} (what is the current 99\% level?) \\
+\midrule
+Daily distribution (parent) & \multicolumn{2}{>{\raggedright\arraybackslash}p{0.74\textwidth}}{normal (temperature-like); gamma, shape 2 (precipitation-like); Student-$t$, 6 d.f.\ (heavy-tailed); beta(4,\,4) (bounded)} \\
+What changes & mean; width; tail (gamma, $t$, beta); position within the bounds (beta) & the same, plus covariate-model cases (width and tail follow the mean; precipitation scaling) and their time-driven counterparts \\
+Shape of the change & none; linear; step at mid-record; step at 80\% of the record; accelerating & none; linear; step at mid-record; accelerating \\
+Size of the change & four sizes per feature (e.g.\ mean shift 0.1--1.0 daily sd) & one size per feature (e.g.\ mean shift 0.5 daily sd) \\
+Record length & 30, 45, 85, 150 years & 30, 45, 85 years \\
+Values per year & 1, 3 (all lengths); 10 (85 years) & 1; 3 (45 and 85 years) \\
+Declustering & none; values at least 3 days apart (10 per year) & values at least 3 days apart (3 per year) \\
+Day-to-day persistence (AR(1) $\phi$) & 0.5; 0 and 0.8 at 85 years & 0.5; 0 at 85 years \\
+Methods & Nyblom test (M\"uller--Watson), location-trend LR test, two-halves test, Mann--Kendall & 14 estimators: constant, last 30 years, two halves, location trend, location + width trend, all-parameter trend, mean-state covariate (two forms, and oracles with the true mean), AIC choice, AIC-weighted average, Bayesian random walks (posterior median and mean) \\
+Bayesian prior & --- & authors'; tighter (45 and 85 years) \\
+Records per case & 10,000 with no change; 2,000 per change & 100 \\
+Scores & false-alarm rate (size); detection rate (power) & true exceedance probability of the last year's estimated level: missed $>2\times$ either way, understated, overstated; error in the estimated change; Bayesian interval coverage and width \\
+\bottomrule
+\end{tabular}
+\caption{Study design: the dimensions varied in the detection and quantification studies.}
+\label{tab:design}
+\end{table}
 
 \subsection{Extremes model and tests}
 
@@ -343,6 +377,15 @@ by the average over the estimators of $|\log(\pi/1\%)|$), so they are typical ra
 worst cases. Figure~\ref{fig:spread} shows the spread of the estimated paths over all 100
 records for three cases, and Figure~\ref{fig:length} the effect of record length.
 
+Figure~\ref{fig:luck} shows how much depends on the particular record. For a mean shift and for
+accelerating warming it shows an easy, a typical and a hard record (the 10th, 50th and 90th
+percentiles of the same difficulty ranking), each with the location trend, the AIC-weighted average
+and the Bayesian model. In the easy records the estimates end close to the truth (true exceedance
+probabilities 0.8--2.9\%). In the hard ones they miss badly, understating the risk for the mean shift
+(4--9\% against the nominal 1\%) and overstating it for the warming (below 0.1\% for the AIC average
+and the Bayesian model). Figure~\ref{fig:reclength} shows typical records at 30, 45 and 85 years: at
+30 years even the typical record understates the risk by a factor of 2 to 9.
+
 Three features stand out. First, the estimates scatter widely about the truth: for a normal parent with 85 years and a
 mean shift of 0.5, the 5--95\% range of the error of the last year's $\Xp$ spans 0.7 daily
 standard deviations for the location trend and about 1.0 for the more flexible estimators,
@@ -379,7 +422,90 @@ per year is larger for shorter records.}
 \label{fig:length}
 \end{figure}
 
-\subsection{Estimated paths, case by case}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_records_luck.pdf}
+\caption{The luck of the draw: for the same case, an easy, a typical and a hard 85-year record
+(10th, 50th and 90th percentiles of the average error of the three estimates in the last year).
+Points: annual maxima; black: true 99\% level; lines: estimates; shaded: Bayesian 90\% interval.
+Above each panel: the true probability that each estimate of the last year's level is exceeded
+(ideal 1\%; Loc.: location trend, AIC: AIC-weighted average, Bayes: Bayesian median). Units: baseline daily sd.}
+\label{fig:luck}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_records_length.pdf}
+\caption{Typical single records of 30, 45 and 85 years for the two cases of
+Figure~\ref{fig:length}. Same layout as Figure~\ref{fig:luck}.}
+\label{fig:reclength}
+\end{figure}
+
+\subsection{Single records, case by case}
+
+Figures~\ref{fig:rnormal}--\ref{fig:rbeta} show, for every case of each parent, the typical
+85-year record (chosen by the same rule as in Figure~\ref{fig:examples}) with three estimates: the
+location trend, the AIC-weighted average and the Bayesian posterior median with its 90\% interval.
+The line above each panel gives the true probability that each estimate of the last year's 99\%
+level is exceeded (ideal 1\%). Single records show things that pooled scores hide.
+
+\begin{itemize}
+\item \textbf{Even a typical record is usually off by a factor of 2 somewhere.} In 23 of the 24
+  typical records at least one of the three estimates misses the true risk by more than a factor of
+  2. Over all 85-year standard records, at least one of the three misses in 75\% and all three in
+  36\%.
+\item \textbf{Estimates from one record err together.} They are fitted to the same few extremes, so
+  a record with unusually large or small maxima pulls them all the same way: the correlation between
+  their log exceedance probabilities over records is 0.56--0.76. Agreement between methods applied
+  to one record is therefore weak evidence that they are right.
+\item \textbf{Flexible estimates can invent a change.} In the typical no-change records for the
+  gamma and $t$ parents, a few large values in the second half make the AIC-weighted average and the
+  Bayesian model rise when nothing changes, so they overstate the current risk (exceedance
+  0.3--0.7\%), while the location trend stays near the truth (0.9--1.2\%).
+\item \textbf{A small error in level can be a large error in risk.} For the bounded beta parent the
+  estimates look close to the truth, yet their exceedance probabilities range from below 0.1\% to
+  nearly 4\%, because its annual maxima vary little from year to year, so the probability of
+  exceeding a level changes quickly with the level.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_records_normal.pdf}
+\caption{Normal parent: the typical 85-year record for every case. Points: annual maxima; black: true 99\%
+level; location trend (blue), AIC-weighted average (red, dashed), Bayesian median (orange) with its
+90\% interval (shaded). Above each panel: true probability that each estimate of the last year's
+level is exceeded (ideal 1\%; Loc.: location trend, AIC: AIC-weighted average, Bayes: Bayesian median). Units: baseline daily sd.}
+\label{fig:rnormal}
+\end{figure}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_records_gamma.pdf}
+\caption{Gamma (precipitation-like) parent: the typical 85-year record for every case. Points: annual maxima; black: true 99\%
+level; location trend (blue), AIC-weighted average (red, dashed), Bayesian median (orange) with its
+90\% interval (shaded). Above each panel: true probability that each estimate of the last year's
+level is exceeded (ideal 1\%; Loc.: location trend, AIC: AIC-weighted average, Bayes: Bayesian median). Units: baseline daily sd.}
+\label{fig:rgamma}
+\end{figure}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_records_t.pdf}
+\caption{Student-$t$ (heavy-tailed) parent: the typical 85-year record for every case. Points: annual maxima; black: true 99\%
+level; location trend (blue), AIC-weighted average (red, dashed), Bayesian median (orange) with its
+90\% interval (shaded). Above each panel: true probability that each estimate of the last year's
+level is exceeded (ideal 1\%; Loc.: location trend, AIC: AIC-weighted average, Bayes: Bayesian median). Units: baseline daily sd.}
+\label{fig:rt}
+\end{figure}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_records_beta.pdf}
+\caption{Beta (bounded) parent: the typical 85-year record for every case. Points: annual maxima; black: true 99\%
+level; location trend (blue), AIC-weighted average (red, dashed), Bayesian median (orange) with its
+90\% interval (shaded). Above each panel: true probability that each estimate of the last year's
+level is exceeded (ideal 1\%; Loc.: location trend, AIC: AIC-weighted average, Bayes: Bayesian median). Units: baseline daily sd.}
+\label{fig:rbeta}
+\end{figure}
+
+\subsection{Spread over records, case by case}
 
 Figures~\ref{fig:pnormal}--\ref{fig:pbeta} repeat Figure~\ref{fig:length} for every standard
 case, one figure per parent, comparing the location trend (blue) with the Bayesian posterior median
@@ -688,6 +814,25 @@ truth in black.}
 \label{fig:pwrong}
 \end{figure}
 
+\paragraph{Single records.}
+Figure~\ref{fig:rwrong} shows typical single records for six of the processes, with the location +
+width trend, the covariate model and the AIC-weighted average. When the width changes at constant
+mean, the covariate model stays almost flat and understates the current risk (4.9\%), while the
+location + width trend follows the widening (1.8\%). After a step the covariate model follows the
+smoothed step. With accelerating warming the covariate model ends closer to the truth than the
+location + width trend whether the width follows the mean (2.7\% against 5.4\%) or time (2.5\%
+against 3.3\%). The AIC-weighted average usually lies between the two.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_records_wrong.pdf}
+\caption{Typical 85-year records for six true processes: annual maxima (points), true 99\% level
+(black), location + width trend (aqua), mean-state covariate model (yellow) and AIC-weighted average
+(red, dashed). Above each panel: true probability that each estimate of the last year's level is
+exceeded (ideal 1\%; L+W: location + width trend, Cov.: covariate model, AIC: AIC-weighted average). Units: baseline daily sd.}
+\label{fig:rwrong}
+\end{figure}
+
 \paragraph{The covariate-model cases in detail.}
 In these cases the width and tail of the daily distribution change with the mean, and the mean
 itself rises along an accelerating path. At 85 years the location trend misses the current risk by
@@ -806,18 +951,6 @@ interval, consistent with MCMC noise.
 \item We have not yet run the paper's joint $L^*$ test, the exceedance (threshold) versions of
   the tests, or the Bayes factors that compare ``more events'' with ``a shifted distribution''.
 \end{itemize}
-
-\section{Next steps}
-
-\begin{enumerate}
-\item Apply the tests and the location-trend, covariate and Bayesian estimators to ERA5 (85
-  years) at selected grid cells or regions, with declustered values, and compare with the
-  synthetic-data error rates reported here.
-\item Add seasonality to the synthetic data, and an external covariate (global mean
-  temperature) to the covariate model.
-\item Report uncertainty for the current return level from the MLE estimators (profile likelihood
-  or bootstrap) and check its coverage as we did for the Bayesian intervals.
-\end{enumerate}
 
 %=====================================================================================
 \appendix

@@ -267,6 +267,117 @@ def fig_examples(png):
     _save(fig, "fig01_examples", png)
 
 
+# ---------------------------------------------------------------------------------------------
+# Single records (like fig01_examples): annual maxima as points, truth and estimates as lines
+# ---------------------------------------------------------------------------------------------
+REC_EST = ["trend", "aic_avg", "tvp_median"]
+REC_SHORT = {"const": "Const.", "trend": "Loc.", "trend2": "L+W", "cov2": "Cov.",
+             "aic_avg": "AIC", "tvp_median": "Bayes"}
+
+
+def pick_record(sc, names, q=0.5):
+    """Record at quantile q of difficulty (mean over names of |log(exceedance / 1%)| in the last
+    year): q = 0.5 is the typical record, 0.1 an easy one, 0.9 a hard one."""
+    score = np.nanmean([np.abs(np.log(sc.exceedance(n) / 0.01)) for n in names], axis=0)
+    ok = np.isfinite(score)
+    order = np.argsort(np.where(ok, score, np.inf))
+    return int(order[int(round(q * (ok.sum() - 1)))])
+
+
+def _pct(x):
+    return "<0.1%" if x < 0.001 else f"{100 * x:.1f}%"
+
+
+def fig_records(name, panels, names, png, ncols=3, panel_h=1.9, ylabel_all=False):
+    """Grid of single records. panels: (title, family, change, design kwargs, difficulty quantile)."""
+    nrows = int(np.ceil(len(panels) / ncols))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(6.5, 0.75 + panel_h * nrows), squeeze=False)
+    for ax, (title, family, ch, kw, q) in zip(axes.flat, panels):
+        sc = get_scenario(family, ch, **kw)
+        if sc is None:
+            ax.axis("off")
+            continue
+        rep = pick_record(sc, names, q)
+        yr = np.arange(1, sc.T + 1)
+        if "tvp_median" in names:
+            ax.fill_between(yr, sc.tvp_lo[rep, P99], sc.tvp_hi[rep, P99], color=ORANGE, alpha=0.13, lw=0)
+        ax.plot(yr, sc.panel(rep)[:, 0], "o", ms=2.2, color=INK2, mec="white", mew=0.3, zorder=3)
+        for n in names:
+            ax.plot(yr, sc.est[n][rep, P99], color=EST[n][1], ls=EST[n][2], lw=1.4, zorder=4)
+        ax.plot(yr, sc.truth[P99], color=INK, lw=2.0, zorder=5)
+        ax.set_xlim(1, sc.T)
+        lines = np.concatenate([sc.panel(rep)[:, 0], sc.truth[P99]] + [sc.est[n][rep, P99] for n in names])
+        lo, hi = np.nanmin(lines), np.nanmax(lines)
+        ax.set_ylim(lo - 0.08 * (hi - lo), hi + 0.15 * (hi - lo))    # Bayes band may run off the top
+        ax.set_title(title, loc="left", fontsize=7.5, pad=11)
+        ax.text(0, 1.015, "   ".join(f"{REC_SHORT[n]} {_pct(sc.exceedance(n)[rep])}" for n in names),
+                transform=ax.transAxes, va="bottom", fontsize=5.9, color=INK2, in_layout=False)
+        ax.tick_params(labelsize=6.5)
+    for ax in axes.flat[len(panels):]:
+        ax.axis("off")
+    for ax in axes[-1]:
+        ax.set_xlabel("Year of record", fontsize=7)
+    for ax in (axes.flat if ylabel_all else axes[:, 0]):
+        ax.set_ylabel("Annual maximum (daily sd)", fontsize=7)
+    h = _legend_handles(names, band="tvp_median" in names)
+    h.insert(1, Line2D([], [], marker="o", ls="", ms=3, color=INK2, label="Annual maxima"))
+    fig.legend(handles=h, loc="lower center", ncol=3 if len(h) > 4 else len(h), bbox_to_anchor=(0.5, 0.0),
+               fontsize=7)
+    fig.tight_layout(rect=(0, 0.075 if nrows > 1 else 0.14, 1, 1), h_pad=1.6)
+    _save(fig, name, png)
+
+
+RECORD_PARENT = {
+    "normal": [pa.Change("mean", "linear", 0.0), pa.Change("mean", "linear", 0.5),
+               pa.Change("mean", "step50", 0.5), pa.Change("width", "linear", 0.2),
+               pa.Change("warm_coupled", "exp", 0.5), pa.Change("warm_time", "exp", 0.5)],
+    "gamma": [pa.Change("mean", "linear", 0.0), pa.Change("mean", "linear", 0.5),
+              pa.Change("mean", "step50", 0.5), pa.Change("width", "linear", 0.2),
+              pa.Change("tail", "linear", 1.0), pa.Change("precip_scaling", "exp", 0.2)],
+    "t": [pa.Change("mean", "linear", 0.0), pa.Change("mean", "linear", 0.5),
+          pa.Change("mean", "step50", 0.5), pa.Change("width", "linear", 0.2),
+          pa.Change("tail", "linear", 1.0), pa.Change("warm_coupled", "exp", 0.5)],
+    "beta": [pa.Change("mean", "linear", 0.0), pa.Change("mean", "linear", 0.25),
+             pa.Change("mean", "step50", 0.25), pa.Change("width", "linear", 0.1),
+             pa.Change("tail", "linear", 0.2), pa.Change("alpha", "linear", 0.5)],
+}
+
+
+def record_title(ch):
+    """Short panel title for the single-record figures."""
+    a = ch.amount
+    if a == 0:
+        return "no change"
+    return {"mean": f"mean +{a:g} sd" + (" (step)" if ch.shape == "step50" else " (linear)"),
+            "width": f"width ×{np.exp(a):.2f}", "tail": f"tail: log(shape) +{a:g}",
+            "alpha": f"position: log α +{a:g}", "warm_coupled": "warming, width follows mean",
+            "warm_time": "warming, width follows time", "precip_scaling": f"wetter ×{np.exp(a):.2f}",
+            "precip_shape": "wetter, heavier tail"}[ch.knob]
+
+
+def fig_records_all(png):
+    for family, chs in RECORD_PARENT.items():
+        panels = [(record_title(ch), family, ch, dict(T=85), 0.5) for ch in chs]
+        fig_records(f"fig_records_{family}", panels, REC_EST, png)
+    luck = []
+    for family, ch in [("normal", pa.Change("mean", "linear", 0.5)),
+                       ("normal", pa.Change("warm_coupled", "exp", 0.5))]:
+        for q, lab in [(0.1, "an easy record"), (0.5, "a typical record"), (0.9, "a hard record")]:
+            luck.append((f"{record_title(ch).split(',')[0].split(' (')[0]}: {lab}", family, ch, dict(T=85), q))
+    fig_records("fig_records_luck", luck, REC_EST, png)
+    length = []
+    for family, ch in [("normal", pa.Change("mean", "linear", 0.5)),
+                       ("normal", pa.Change("warm_coupled", "exp", 0.5))]:
+        for T in (30, 45, 85):
+            length.append((f"{T} years: {record_title(ch).split(',')[0].split(' (')[0]}", family, ch, dict(T=T), 0.5))
+    fig_records("fig_records_length", length, REC_EST, png)
+    wrong = [(f"{FAMILY[fam]}: {record_title(ch)}", fam, ch, dict(T=85), 0.5) for fam, ch in [
+        ("normal", pa.Change("warm_coupled", "exp", 0.5)), ("normal", pa.Change("warm_time", "exp", 0.5)),
+        ("normal", pa.Change("width", "linear", 0.2)), ("normal", pa.Change("mean", "step50", 0.5)),
+        ("gamma", pa.Change("tail", "linear", 1.0)), ("normal", pa.Change("mean", "linear", 0.0))]]
+    fig_records("fig_records_wrong", wrong, ["trend2", "cov2", "aic_avg"], png)
+
+
 def _spread(ax, sc, name, color):
     q = sc.est[name][:, P99]
     q = q[np.all(np.isfinite(q), axis=1)]
@@ -875,7 +986,8 @@ def main():
             cache["head"] = headline(rec())
         return cache["head"]
 
-    jobs = {"examples": lambda: fig_examples(args.png), "spread": lambda: fig_spread(args.png),
+    jobs = {"examples": lambda: fig_examples(args.png), "records": lambda: fig_records_all(args.png),
+            "spread": lambda: fig_spread(args.png),
             "record_length": lambda: fig_record_length(args.png), "power": lambda: fig_power(args.png),
             "paths_parent": lambda: fig_paths_by_parent(args.png),
             "paths_covariate": lambda: fig_paths_covariate(args.png),
