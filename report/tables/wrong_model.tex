@@ -1,0 +1,26 @@
+\begin{tabular}{lrrrrrrrrrrr}
+\toprule
+ & \multicolumn{7}{c}{Missed by $>2\times$ either way, \% of records} & \multicolumn{4}{c}{AIC picks, \% of records} \\
+\cmidrule(lr){2-8} \cmidrule(lr){9-12}
+True process & Const. & Loc. & Loc.+wid. & Bayes & Cov. & AIC & AIC avg. & Const. & Loc. & Loc.+wid. & Cov. \\
+\midrule
+\multicolumn{12}{l}{\emph{30 yr}} \\
+No change & \textbf{71} & \textbf{73} & \textbf{73} & \textbf{73} & \textbf{76} & -- & -- & 64 & 16 & 5 & 16 \\
+Mean shift, linear in time & 82 & \textbf{72} & \textbf{73} & \textbf{76} & \textbf{74} & -- & -- & 40 & 44 & 8 & 9 \\
+Mean shift, step & 78 & 66 & 76 & \textbf{74} & \textbf{74} & -- & -- & 27 & 53 & 5 & 15 \\
+Width change, mean constant & 83 & 76 & \textbf{74} & \textbf{77} & 78 & -- & -- & 29 & 40 & 15 & 16 \\
+Tail change, mean constant & 75 & 79 & 74 & \textbf{73} & 77 & -- & -- & 29 & 36 & 15 & 20 \\
+Follows mean state, mean linear in time & 83 & 78 & \textbf{70} & \textbf{77} & \textbf{75} & -- & -- & 12 & 60 & 11 & 17 \\
+Follows mean state, mean accelerating & 87 & 85 & 82 & \textbf{81} & \textbf{79} & -- & -- & 18 & 38 & 10 & 34 \\
+Follows time, mean accelerating & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- \\
+\multicolumn{12}{l}{\emph{85 yr}} \\
+No change & \textbf{44} & \textbf{49} & \textbf{55} & \textbf{53} & \textbf{60} & -- & -- & 69 & 11 & 4 & 17 \\
+Mean shift, linear in time & 67 & \textbf{49} & \textbf{55} & \textbf{58} & \textbf{56} & -- & -- & 22 & 59 & 2 & 17 \\
+Mean shift, step & 59 & 54 & 55 & \textbf{56} & \textbf{44} & -- & -- & 6 & 20 & 2 & 72 \\
+Width change, mean constant & 76 & 54 & \textbf{55} & \textbf{63} & 69 & -- & -- & 6 & 71 & 17 & 6 \\
+Tail change, mean constant & 83 & 75 & 59 & \textbf{60} & 67 & -- & -- & 6 & 38 & 38 & 18 \\
+Follows mean state, mean linear in time & 82 & 52 & \textbf{54} & \textbf{64} & \textbf{52} & -- & -- & 2 & 66 & 5 & 26 \\
+Follows mean state, mean accelerating & 90 & 83 & 75 & \textbf{71} & \textbf{65} & -- & -- & 3 & 27 & 4 & 66 \\
+Follows time, mean accelerating & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- \\
+\bottomrule
+\end{tabular}

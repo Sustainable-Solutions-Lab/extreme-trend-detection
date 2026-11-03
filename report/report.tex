@@ -10,6 +10,7 @@
 \usepackage[hidelinks]{hyperref}
 
 \newcommand{\Xp}{X_{0.99}}
+\newcommand{\PENDING}[1]{\textcolor{red}{[#1]}}
 \setlength{\parskip}{0.45em}
 \setlength{\parindent}{0pt}
 
@@ -36,10 +37,16 @@ is, is much harder. Even with no change and the correct model, the 99\% annual-m
 estimated from 85 years understates the true risk at least twofold in 27\% of records (44\% with
 30 years). When extremes are changing, a GEV with a linear trend in location comes close to this
 floor (30\% at 85 years), and no more flexible method, including the authors' Bayesian
-random-walk model, does better on average. When the whole distribution moves with the mean
-state, as expected under warming or moistening, time-trend methods understate current risk in
-57--71\% of 85-year records; a model whose parameters follow a smoothed annual mean does
-markedly better (45\%).
+random-walk model, does better on average.
+
+\emph{Using the wrong model.} There is no single best model for the change. Whether to model it as a
+function of time or of the mean state depends on which actually drives it, and that is usually
+unknown. With 85 years, using the wrong driving variable raises the share of records in which the
+current 99\% level misses the true risk by more than a factor of 2 by 10--20 percentage points. A
+mean-state model cannot see a change that does not move the mean, and a time trend cannot follow an
+accelerating mean state. Fitting a change that is not there costs about as much. With 30 years,
+sampling noise dominates and the choice matters little. \PENDING{whether letting the data choose (AIC)
+recovers most of the loss}
 
 \paragraph{Extended summary.}
 We reimplemented the time-varying-extremes methods of M\"uller and Watson (2024) in Python,
@@ -66,15 +73,20 @@ floor, a linear trend in location is the most reliable simple estimator (30\% un
 85 years). The authors' Bayesian random-walk model is competitive for 30- and 45-year records but
 worse for 85-year records (39\%), it shrinks estimated changes toward zero, and its 90\% credible
 intervals, while they cover the truth, are 1.3 to 3 times wider than the actual errors. With three
-values per year its sampler often fails to converge under the authors' prior. When the
-distribution's width and tail move with the mean state, every method that models change as a
-function of time does poorly (57--71\% of 85-year records understate the risk twofold), and a
-covariate model, with GEV location and scale linear in a smoothed annual mean of all daily
-values, does markedly better (45\%). The practical
+values per year, 10--12\% of its fits fail to converge under the authors' prior.
+
+Which model is right depends on the physical process, and our tests show what happens when the
+model is wrong. We compared models of the same complexity that differ only in their driving
+variable: GEV location and scale linear in time, or linear in a smoothed annual mean of all daily
+values. When the distribution's width and tail follow an accelerating mean state, the time-trend
+models miss the current risk by more than a factor of 2 in 75--83\% of 85-year records against 65\%
+for the mean-state model. When the width changes while the mean stays constant, the mean-state model
+sees nothing and misses 69\% against 55\%. When the mean moves linearly in time the two coincide, and
+with 30 years every model misses 66--87\% of records, so the choice of driving variable is
+secondary to record length. \PENDING{time-driven warming; AIC selection and averaging} The practical
 conclusion: these methods can establish \emph{that} extremes are changing, and in which direction,
 but statements about the \emph{size} of the current 1-in-100-year level should carry wide
-uncertainty, and the model for the change should follow the physical expectation (for example,
-the local mean state) rather than calendar time.
+uncertainty, including the spread between physically plausible models of the change.
 
 \setcounter{tocdepth}{1}
 \tableofcontents
@@ -99,8 +111,10 @@ matter:
 \item \textbf{Quantification.} How well do the methods estimate the current return level, for
   example the level the annual maximum exceeds with probability 1\% this year ($\Xp$), and its
   change over the record?
-\item \textbf{Model choice.} Is it better to model change as a function of time (trends, random
-  walks) or of the mean state (a covariate)?
+\item \textbf{Using the wrong model.} A change can be modelled as a function of time (trends,
+  random walks) or of the mean state (a covariate). Either could be physically right, and usually
+  we do not know which. What is lost when the change follows one and we model it as a function of
+  the other, and what can be done when we do not know?
 \end{enumerate}
 
 %=====================================================================================
@@ -152,6 +166,10 @@ maximum likelihood to the same records, except the Bayesian model.
   follows the year-to-year noise of the covariate) and is shown only for reference.
 \item[Covariate (true mean)] as above but with the true mean path as covariate: an oracle that
   shows the cost of estimating the covariate.
+\item[Data-chosen (AIC)] for when the form of the change is unknown: of the constant, location-trend,
+  location + width trend and mean-state covariate models, the one with the lowest AIC.
+\item[AIC-weighted average] the average of the same four models' $X_{0.99}$ paths, with Akaike
+  weights $w_i\propto\exp(-\Delta\mathrm{AIC}_i/2)$.
 \item[Bayesian] the authors' four-random-walk model (their \texttt{GEV\_4RW\_Model.stan},
   unchanged likelihood and priors), posterior median of $X_{0.99}(t)$. The parameters follow
   random walks in a logistic transform of $\xi_t\in(-0.9,2.1)$, in $\ln\alpha_t$, $\ln s_t$ and
@@ -206,6 +224,9 @@ is correct:
   over the record, so every quantile scales with the mean (a Clausius--Clapeyron-type change);
   in a variant the gamma shape also falls as it gets wetter (heavier tail).
 \end{itemize}
+A third set, the \emph{time-driven} counterparts of the accelerating temperature-like cases, has the
+same mean path and the same first- and last-year distributions, but the width and tail change
+linearly in time between those states instead of following the mean (Section~\ref{sec:wrong}).
 
 \subsection{Scoring}
 
@@ -287,7 +308,7 @@ over the record (baseline daily sd). Last row: size with no change, mean over pa
 \end{table}
 
 %=====================================================================================
-\section{Quantifying change}
+\section{Quantifying change}\label{sec:quant}
 
 \subsection{What the estimates look like}
 
@@ -480,17 +501,125 @@ records) against the truth (black bar), for every case.}
 \label{fig:change}
 \end{figure}
 
-\subsection{When the distribution moves with the mean state}
+%=====================================================================================
+\section{Using the wrong model}\label{sec:wrong}
 
-In the covariate-model cases the width and tail of the daily distribution change with the mean, and
-the mean itself rises along an accelerating path. All methods that model change as a function of
-time do poorly: at 85 years the location trend understates the current risk twofold in 71\% of
-records, the location + width trend in 60\%, and the Bayesian model in 57\%. The covariate model
-does markedly better (45\%), close to its oracle version with the true mean path (43\%). Two
-things contribute: the covariate captures the acceleration, which a straight line in time
-cannot, and it is estimated from all daily values, not only the extremes, so it is much less
-noisy than the extremes themselves. Letting the tail index also depend on the covariate makes
-things worse (57\%), because the tail index then follows the noise in the covariate.
+A change in extremes can be modelled as a function of time (a constant, a linear trend in location,
+linear trends in location and width, or a random walk) or as a function of the mean state, here a
+smoothed annual mean of all daily values. Physically, either could be right. The width of the
+temperature distribution may change because the climate has warmed, a function of the mean state,
+or for reasons with their own time course, such as changes in circulation, land use or aerosols, a
+function of time. Usually we do not know which. There is therefore no single right model. The useful
+questions are what is lost when the model's driving variable is the wrong one, and what to do when
+it is unknown.
+
+\paragraph{When the two kinds of model differ.}
+They coincide when the mean state moves linearly in time, and they differ when it does not (a step,
+an acceleration) or when the distribution changes without any change in the mean. We classified the
+cases by their true process (Table~\ref{tab:wrong}) and compare two models with the same number of
+parameters that differ only in their driving variable: the location + width trend ($\mu$ and
+$\log\sigma$ linear in time) and the mean-state covariate model ($\mu$ and $\log\sigma$ linear in the
+smoothed annual mean). To complete the comparison we added time-driven counterparts of the
+accelerating warming cases: the same mean path and the same first- and last-year distributions, but
+with the width and tail changing linearly in time instead of following the mean. In each pair the
+two processes differ only in how the distribution gets from its first state to its last
+(Figure~\ref{fig:pworld}). At the coupling strength we use, the width in mid-record differs by
+about 4\% between the two.
+
+\paragraph{Score.}
+The tail changes here all lower the 99\% level and the mean changes all raise it, so the one-sided
+score of Section~\ref{sec:quant} favours models that err in the direction of the change: a constant
+fit, for instance, never understates the risk after a tail change. For this comparison we therefore
+count the records in which the estimated level misses the true risk by more than a factor of 2
+\emph{in either direction} (true exceedance probability above 2\% or below 0.5\%). With no change and
+the correct model, this happens in 44\% of 85-year records and 71\% of 30-year records.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_wrong_model.pdf}
+\caption{Share of records in which the estimated 99\% level in the last year misses the true risk
+by more than a factor of 2 in either direction, by true process (rows) and fitted model (columns).
+Bold: the model's form contains the true process (approximately); $\times$: it does not.}
+\label{fig:wrong}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\input{tables/wrong_model.tex}
+\caption{Using the wrong model. Left: share of records (\%) in which the estimated 99\% level in the
+last year misses the true risk by more than a factor of 2 either way; bold where the model's form
+contains the true process. Right: how often AIC selects each candidate. Loc.: location trend;
+Loc.+wid.: location and width trend; Cov.: mean-state covariate. Appendix
+Table~\ref{tab:wrongdetail} splits the misses into under- and overstatement.}
+\label{tab:wrong}
+\end{table}
+
+\paragraph{Findings.}
+\begin{itemize}
+\item \textbf{The wrong driving variable costs 10--20 percentage points at 85 years.} When the
+  distribution follows an accelerating mean state, the location + width trend misses 75\% of
+  records and the covariate model 65\%. When the width changes while the mean stays constant, the
+  covariate model, whose covariate then carries no signal, misses 69\% and the location + width
+  trend 55\%.
+\item \textbf{Unneeded flexibility costs about as much.} With no change, the covariate model misses
+  60\% of records against 44\% for the constant fit, because it fits a relation to the year-to-year
+  noise of the annual mean; the location + width trend misses 55\%.
+\item \textbf{Where the two kinds of model coincide, the choice hardly matters}: with the mean linear
+  in time, with or without the distribution following it, the location trend, location + width
+  trend and covariate model miss 49--56\% of records.
+\item \textbf{A step favours the covariate model} (44\% against 54--55\% for the time trends),
+  because the smoothed annual mean follows the step and a straight line cannot.
+\item \textbf{For 30-year records the choice matters little}: every model misses 66--87\% of
+  records, and within each true process the models differ by 5--13 points, while sampling noise
+  alone causes 71\%.
+\item \textbf{Time-driven warming.} \PENDING{results for the time-driven counterparts}
+\end{itemize}
+
+\paragraph{Can the data tell?}
+AIC selects among the constant, location-trend, location + width trend and covariate models
+(Table~\ref{tab:wrong}, right). With 85 years it picks the covariate model in 66\% of the
+accelerating mean-state cases and 72\% of the step cases, but also in 17\% of records with no change.
+It almost never detects a width change: when only the width changes it picks the location trend in
+71\% of records and the location + width trend in 17\%. With 30 years it picks the constant fit or
+the location trend in most records whatever the truth. \PENDING{accuracy of the AIC-selected and
+AIC-weighted estimates}
+
+\paragraph{What to do when we do not know.}
+\PENDING{recommendations, once the AIC and time-driven results are in}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_paths_world.pdf}
+\caption{The same accelerating warming with the width (and for the $t$ the tail) following the mean
+state (``width follows mean'') or changing linearly in time (``width follows time''); the first- and
+last-year distributions are the same in each pair. Location + width trend (aqua) against the
+mean-state covariate model (yellow), which have the same number of parameters. Median (line),
+25--75\% and 5--95\% of the estimated 99\% level over 100 records, truth in black.}
+\label{fig:pworld}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_paths_wrong.pdf}
+\caption{Cases in which the mean state does not track the change. For a width or tail change at
+constant mean the covariate model (yellow) has no signal and stays nearly flat; for a step it follows
+the smoothed step. Location + width trend in aqua. Median, 25--75\% and 5--95\% over 100 records,
+truth in black.}
+\label{fig:pwrong}
+\end{figure}
+
+\paragraph{The covariate-model cases in detail.}
+In these cases the width and tail of the daily distribution change with the mean, and the mean
+itself rises along an accelerating path. On the one-sided score of Section~\ref{sec:quant}, at 85
+years the location trend understates the current risk twofold in 71\% of records, the location +
+width trend in 60\% and the Bayesian model in 57\%; the covariate model does markedly better (45\%),
+close to its oracle version with the true mean path (43\%). Two things contribute: the covariate
+captures the acceleration, which a straight line in time cannot, and it is estimated from all daily
+values, not only the extremes, so it is much less noisy than the extremes themselves. Letting the
+tail index also depend on the covariate makes things worse (57\%), because the tail index then
+follows the noise in the covariate.
 
 Figures~\ref{fig:pwarm} and \ref{fig:pwet} show the paths. The covariate model (yellow) follows
 the accelerating rise; the location trend (blue), a straight line, cuts across it and ends well below
@@ -618,6 +747,16 @@ interval, consistent with MCMC noise.
 (baseline daily sd). ``log(shape)'' is the log of the gamma shape $a$, the $t$ degrees of freedom
 $\nu$, or the beta $\beta$; increasing it lightens the tail of the gamma and $t$.}
 \label{tab:cases}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\input{tables/wrong_model_detail.tex}
+\caption{The misses of Table~\ref{tab:wrong} at 85 years, split into records with the risk
+understated (true exceedance $>2\%$) and overstated ($<0.5\%$) at least twofold. Bold: the model's
+form contains the true process.}
+\label{tab:wrongdetail}
 \end{table}
 
 \begin{figure}[H]

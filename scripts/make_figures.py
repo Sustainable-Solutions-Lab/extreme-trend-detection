@@ -62,14 +62,16 @@ EST = {   # name: (label, colour, linestyle)
     "trend3": ("All-parameter trend", MAGENTA, "-"),
     "recent30": ("Last 30 years", GREEN, "-"),
     "cov3": ("Covariate, all parameters", VIOLET, "-"),
-    "split": ("Two halves", RED, "-"),
+    "split": ("Two halves", MUTED, "--"),
+    "aic": ("Data-chosen (AIC)", RED, "-"),
+    "aic_avg": ("AIC-weighted average", RED, "--"),
     "cov2_true": ("Covariate (true mean)", YELLOW, "--"),
     "cov3_true": ("Covariate, all par. (true mean)", VIOLET, "--"),
     "tvp_mean": ("Bayesian (mean)", ORANGE, "--"),
 }
 MAIN = ["const", "trend", "trend2", "cov2", "tvp_median"]
 TABLE_EST = ["const", "recent30", "split", "trend", "trend2", "trend3", "cov2", "cov3",
-             "tvp_median", "tvp_mean", "cov2_true", "cov3_true"]
+             "aic", "aic_avg", "tvp_median", "tvp_mean", "cov2_true", "cov3_true"]
 FAMILY = {"normal": "Normal", "gamma": "Gamma", "t": "Student-t", "beta": "Beta"}
 FAMILIES = ["normal", "gamma", "t", "beta"]
 
@@ -101,6 +103,7 @@ def change_label(ch):
     what = {"mean": f"mean +{a:g} sd", "width": f"width ×{np.exp(a):.2f}",
             "tail": f"tail: log(shape) +{a:g}", "alpha": f"position: log α +{a:g}",
             "warm_coupled": f"warming +{a:g} sd, width & tail follow",
+            "warm_time": f"warming +{a:g} sd, width & tail linear in time",
             "precip_scaling": f"wetter: all quantiles ×{np.exp(a):.2f}",
             "precip_shape": f"wetter ×{np.exp(a):.2f}, heavier tail"}[ch.knob]
     return what + {"linear": " (linear)", "step50": " (step)", "exp": " (accel.)"}[ch.shape]
@@ -153,8 +156,10 @@ def cases(kind="standard", family=None):
     for f in fams:
         if kind == "standard":
             out += [(f, ch) for ch in run_c.scenarios(f)]
-        else:
+        elif kind == "coupled":
             out += [(f, ch) for ch in run_c.coupled_scenarios(f) if ch.amount != 0]
+        else:                                                        # "time": time-driven
+            out += [(f, ch) for ch in run_c.time_driven_scenarios(f)]
     return out
 
 
@@ -164,7 +169,7 @@ def records_table():
     WORK.mkdir(parents=True, exist_ok=True)
     rows = []
     for dname, dkw in DESIGNS.items():
-        for kind in ("standard", "coupled"):
+        for kind in ("standard", "coupled", "time"):
             for family, ch in cases(kind):
                 if not scenario_path(family, ch, **dkw).exists():
                     continue
@@ -318,9 +323,10 @@ def short_label(family, ch):
     a = ch.amount
     what = {"mean": f"mean +{a:g} sd", "width": f"width ×{np.exp(a):.2f}",
             "tail": f"tail: log(shape) +{a:g}", "alpha": f"position: log α +{a:g}",
-            "warm_coupled": "warming, coupled", "precip_scaling": f"wetter ×{np.exp(a):.2f}",
+            "warm_coupled": "warming, width follows mean", "warm_time": "warming, width follows time",
+            "precip_scaling": f"wetter ×{np.exp(a):.2f}",
             "precip_shape": "wetter, heavier tail"}[ch.knob] if a else "no change"
-    coupled = ch.knob in ("warm_coupled", "precip_scaling", "precip_shape")
+    coupled = ch.knob in ("warm_coupled", "warm_time", "precip_scaling", "precip_shape")
     shape = {"linear": " (linear)" if coupled else "", "step50": " (step)",
              "exp": " (accel.)"}[ch.shape] if a else ""
     return f"{FAMILY[family]}\n{what}{shape}"
@@ -640,6 +646,179 @@ def fig_prior_phi(head, png):
 
 
 # ---------------------------------------------------------------------------------------------
+# Using the wrong model: cases classified by the true process
+# ---------------------------------------------------------------------------------------------
+PROCESSES = [   # (key, label, models with the right form: time-based, mean-state-based)
+    ("none", "No change", "both"),
+    ("mean_lin", "Mean shift, linear in time", "both"),
+    ("mean_step", "Mean shift, step", "mean state"),
+    ("width_const_mean", "Width change, mean constant", "time"),
+    ("tail_const_mean", "Tail change, mean constant", "neither"),
+    ("state_lin", "Follows mean state, mean linear in time", "both"),
+    ("state_acc", "Follows mean state, mean accelerating", "mean state"),
+    ("time_acc", "Follows time, mean accelerating", "neither"),
+]
+PROC_LABEL = {k: lab for k, lab, _ in PROCESSES}
+WRONG_EST = ["const", "trend", "trend2", "tvp_median", "cov2", "aic", "aic_avg", "cov2_true"]
+# right form: estimator -> set of process keys for which its form contains the truth (approximately)
+RIGHT_FORM = {
+    "const": {"none"},
+    "trend": {"none", "mean_lin"},
+    "trend2": {"none", "mean_lin", "width_const_mean", "state_lin"},
+    "tvp_median": {"none", "mean_lin", "mean_step", "width_const_mean", "tail_const_mean", "state_lin",
+                   "state_acc", "time_acc"},
+    "cov2": {"none", "mean_lin", "mean_step", "state_lin", "state_acc"},
+    "cov2_true": {"none", "mean_lin", "mean_step", "state_lin", "state_acc"},
+}
+
+
+def process_of(knob, shape, amount):
+    if amount == 0:
+        return "none"
+    if knob == "mean":
+        return "mean_lin" if shape == "linear" else "mean_step"
+    if knob in ("width", "tail"):
+        return f"{knob}_const_mean"
+    if knob in ("warm_coupled", "precip_scaling", "precip_shape"):
+        return "state_lin" if shape == "linear" else "state_acc"
+    if knob == "warm_time":
+        return "time_acc"
+    return None                                     # beta position change: not classified
+
+
+def wrong_model_table(rec):
+    r = rec.assign(process=[process_of(k, sh, a) for k, sh, a in zip(rec.knob, rec["shape"], rec.amount)])
+    r = r[r.process.notna() & r.design.isin(["30 yr", "45 yr", "85 yr"]) & r.estimator.isin(WRONG_EST)]
+    g = r.dropna(subset=["exc"]).groupby(["design", "process", "estimator"])
+    out = g.agg(cases=("case", "nunique"), under2x=("exc", lambda e: np.mean(e > 0.02)),
+                over2x=("exc", lambda e: np.mean(e < 0.005)), exc_median=("exc", "median")).reset_index()
+    out["off2x"] = out.under2x + out.over2x
+    return out
+
+
+def aic_choices(rec):
+    """Share of records for which AIC picks each candidate, by design and process (cached)."""
+    path = WORK / "aic_choice.pkl"
+    keys = rec[rec.design.isin(["30 yr", "45 yr", "85 yr"]) & (rec.estimator == "trend")][
+        ["design", "family", "knob", "shape", "amount"]].drop_duplicates()
+    old = pd.read_pickle(path) if path.exists() else pd.DataFrame()
+    rows = [old] if len(old) else []
+    from concurrent.futures import ProcessPoolExecutor
+    from tvextremes import critical_values as cv
+    with ProcessPoolExecutor(max_workers=4, initializer=cv._single_thread) as ex:
+        for _, kr in keys.iterrows():
+            if len(old) and ((old.design == kr.design) & (old.family == kr.family) & (old.knob == kr.knob)
+                             & (old["shape"] == kr["shape"]) & np.isclose(old.amount, kr.amount)).any():
+                continue
+            T = DESIGNS[kr.design]["T"]
+            ch = pa.Change(kr.knob, kr["shape"], float(kr.amount))
+            res = stage_c.load(scenario_path(kr.family, ch, T=T))
+            jobs = [(kr.family, ch, 1, T, 0.5, 0, res.seed, i) for i in range(res.stats.shape[0])]
+            ch_idx = np.array([c for _, c in ex.map(stage_c.aic_choice, jobs, chunksize=5)])
+            rows.append(pd.DataFrame([dict(design=kr.design, family=kr.family, knob=kr.knob,
+                                           shape=kr["shape"], amount=kr.amount, model=m,
+                                           share=float(np.mean(ch_idx == i)))
+                                      for i, m in enumerate(stage_c.AIC_CANDIDATES)]))
+    out = pd.concat(rows, ignore_index=True)
+    out.to_pickle(path)
+    out["process"] = [process_of(k, sh, a) for k, sh, a in zip(out.knob, out["shape"], out.amount)]
+    return out
+
+
+def fig_wrong_model(rec, png):
+    w = wrong_model_table(rec)
+    from matplotlib.colors import LinearSegmentedColormap
+    cmap = LinearSegmentedColormap.from_list("blue", ["#f4f8fd", "#cde2fb", "#86b6ef", "#3987e5",
+                                                      "#1c5cab", "#0d366b"])
+    designs = ["30 yr", "85 yr"]
+    fig, axes = plt.subplots(1, 2, figsize=(6.5, 3.4), sharey=True)
+    for ax, d in zip(axes, designs):
+        M = np.full((len(PROCESSES), len(WRONG_EST)), np.nan)
+        for i, (pk, _, _) in enumerate(PROCESSES):
+            for j, n in enumerate(WRONG_EST):
+                v = w[(w.design == d) & (w.process == pk) & (w.estimator == n)].off2x
+                if len(v):
+                    M[i, j] = v.iloc[0]
+        ax.imshow(M, cmap=cmap, vmin=0.3, vmax=0.95, aspect="auto")
+        for i, (pk, _, _) in enumerate(PROCESSES):
+            for j, n in enumerate(WRONG_EST):
+                if not np.isfinite(M[i, j]):
+                    ax.text(j, i, "–", ha="center", va="center", fontsize=6.5, color=MUTED)
+                    continue
+                right = pk in RIGHT_FORM.get(n, set())
+                ax.text(j, i, f"{100 * M[i, j]:.0f}" + ("" if right or n.startswith("aic") else "×"),
+                        ha="center", va="center", fontsize=6.5,
+                        color="white" if M[i, j] > 0.7 else INK, fontweight="bold" if right else "normal")
+        ax.set_xticks(range(len(WRONG_EST)), [EST[n][0] for n in WRONG_EST], rotation=60, ha="right")
+        ax.set_title(d.replace("yr", "years"), fontsize=8)
+        ax.grid(False)
+        for sp in ax.spines.values():
+            sp.set_visible(False)
+        ax.axvline(4.5, color="white", lw=3)
+        ax.axvline(6.5, color="white", lw=3)
+    axes[0].set_yticks(range(len(PROCESSES)), [lab for _, lab, _ in PROCESSES])
+    fig.suptitle("Share of records in which the estimated 99% level misses the true risk by more than "
+                 "a factor of 2 (either way), %", fontsize=8, x=0.6)
+    fig.text(0.5, -0.03, "Bold: the model's form contains the truth (approximately).  ×: it does not.  "
+             "AIC columns choose among the constant, location, location + width and covariate models.",
+             ha="center", fontsize=6.8, color=INK2)
+    fig.tight_layout()
+    _save(fig, "fig_wrong_model", png)
+
+
+def fig_paths_world(png):
+    """Same mean path and end states; width follows the mean (top of each pair) or time."""
+    rows = [("normal", pa.Change("warm_coupled", "exp", 0.5)), ("normal", pa.Change("warm_time", "exp", 0.5)),
+            ("t", pa.Change("warm_coupled", "exp", 0.5)), ("t", pa.Change("warm_time", "exp", 0.5))]
+    fig_bands("fig_paths_world", rows, BY_LENGTH, ["trend2", "cov2"], png)
+    rows = [("normal", pa.Change("width", "linear", 0.2)), ("gamma", pa.Change("width", "linear", 0.2)),
+            ("normal", pa.Change("mean", "step50", 0.5)), ("gamma", pa.Change("tail", "linear", 1.0))]
+    fig_bands("fig_paths_wrong", rows, BY_LENGTH, ["trend2", "cov2"], png)
+
+
+def table_wrong_model(rec):
+    """Main table: share missed by > 2x either way (30 and 85 years) and the AIC choices; and a
+    detail table with the two directions separately at 85 years."""
+    w = wrong_model_table(rec)
+    ch = aic_choices(rec)
+    est = ["const", "trend", "trend2", "tvp_median", "cov2", "aic", "aic_avg"]
+    short = {"const": "Const.", "trend": "Loc.", "trend2": "Loc.+wid.", "tvp_median": "Bayes",
+             "cov2": "Cov.", "aic": "AIC", "aic_avg": "AIC avg."}
+
+    def cell(d, pk, n, metric):
+        v = w[(w.design == d) & (w.process == pk) & (w.estimator == n)][metric]
+        c = f"{100 * v.iloc[0]:.0f}" if len(v) else "--"
+        return r"\textbf{" + c + "}" if len(v) and pk in RIGHT_FORM.get(n, set()) else c
+
+    lines = [r"\begin{tabular}{l" + "r" * len(est) + "rrrr}", r"\toprule",
+             r" & \multicolumn{%d}{c}{Missed by $>2\times$ either way, \%% of records} & "
+             r"\multicolumn{4}{c}{AIC picks, \%% of records} \\" % len(est),
+             r"\cmidrule(lr){2-%d} \cmidrule(lr){%d-%d}" % (1 + len(est), 2 + len(est), 5 + len(est)),
+             "True process & " + " & ".join(short[n] for n in est)
+             + r" & Const. & Loc. & Loc.+wid. & Cov. \\", r"\midrule"]
+    for d in ["30 yr", "85 yr"]:
+        lines.append(rf"\multicolumn{{{5 + len(est)}}}{{l}}{{\emph{{{d}}}}} \\")
+        for pk, lab, _ in PROCESSES:
+            cells = [cell(d, pk, n, "off2x") for n in est]
+            for m in stage_c.AIC_CANDIDATES:
+                v = ch[(ch.design == d) & (ch.process == pk) & (ch.model == m)].share
+                cells.append(f"{100 * v.mean():.0f}" if len(v) else "--")
+            lines.append(f"{lab} & " + " & ".join(cells) + r" \\")
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    TAB.mkdir(parents=True, exist_ok=True)
+    (TAB / "wrong_model.tex").write_text("\n".join(lines) + "\n")
+
+    lines = [r"\begin{tabular}{l" + "r" * len(est) + "}", r"\toprule",
+             "True process & " + " & ".join(short[n] for n in est) + r" \\", r"\midrule"]
+    for metric, title in [("under2x", "Understated $>2\\times$"), ("over2x", "Overstated $>2\\times$")]:
+        lines.append(rf"\multicolumn{{{1 + len(est)}}}{{l}}{{\emph{{{title}, 85 years}}}} \\")
+        for pk, lab, _ in PROCESSES:
+            lines.append(f"{lab} & " + " & ".join(cell("85 yr", pk, n, metric) for n in est) + r" \\")
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    (TAB / "wrong_model_detail.tex").write_text("\n".join(lines) + "\n")
+
+
+# ---------------------------------------------------------------------------------------------
 # Tables
 # ---------------------------------------------------------------------------------------------
 def table_headline(head):
@@ -703,14 +882,16 @@ def table_cases(rec):
     s = rec[(rec.design == "85 yr") & (rec.estimator == "trend")]
     lines = [r"\begin{tabular}{lllr}", r"\toprule",
              r"Set & Parent & Change over the record & $\Delta X_{0.99}$ \\", r"\midrule"]
-    for kind, title in [("standard", "Standard"), ("coupled", "Covariate model")]:
+    for kind, title in [("standard", "Standard"), ("coupled", "Covariate model"), ("time", "Time-driven")]:
         sk = s[s.kind == kind]
+        if not len(sk):
+            continue
         for fam in FAMILIES:
             for case in dict.fromkeys(sk[sk.family == fam].case):
                 tc = sk[(sk.family == fam) & (sk.case == case)].true_change.iloc[0]
                 lines.append(f"{title} & {FAMILY[fam]} & {case.replace('&', chr(92) + '&')} & {tc:+.2f} \\\\")
                 title = ""
-        if kind == "standard":
+        if kind != "time":
             lines.append(r"\midrule")
     lines += [r"\bottomrule", r"\end{tabular}"]
     txt = "\n".join(lines) + "\n"
@@ -750,6 +931,8 @@ def main():
             "size": lambda: fig_size(args.png), "exceedance": lambda: fig_exceedance(rec(), args.png),
             "heatmap": lambda: fig_heatmap(head(), args.png), "change": lambda: fig_change(rec(), args.png),
             "bayes": lambda: fig_bayes(rec(), args.png), "prior_phi": lambda: fig_prior_phi(head(), args.png),
+            "wrong_model": lambda: (fig_wrong_model(rec(), args.png), table_wrong_model(rec())),
+            "paths_world": lambda: fig_paths_world(args.png),
             "tables": lambda: (table_headline(head()), table_power(), table_cases(rec()))}
     for name, f in jobs.items():
         if args.only is None or name in args.only:
