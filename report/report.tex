@@ -70,13 +70,16 @@ models, weighted by how well each fits, comes close to the best single model wha
 %=====================================================================================
 \section{Questions}
 
-M\"uller and Watson (2024) develop inference for extremes when parameters may vary over time:
-likelihood-ratio and Nyblom-type tests with small-sample critical values that depend on the
-estimated tail index, and a Bayesian time-varying GEV model with random walks in its parameters.
-Their simulations calibrate the size of the tests for data drawn exactly from the GEV model. They
-do not report power, do not test the methods on data whose extremes are only approximately GEV
-(the usual situation), say little about serial dependence, and do not check whether the Bayesian
-model recovers known parameter paths. For climate applications these are the questions that
+M\"uller and Watson (2024) develop small-sample inference for extremes whose parameters may change
+over time: likelihood-ratio tests about the GEV parameters (the tail index, a high quantile, a
+Pareto tail) and the Nyblom test of parameter constancy, both with critical values that depend on
+the estimated tail index, and a Bayesian time-varying GEV model with random walks in its
+parameters, estimated by Hamiltonian Monte Carlo. They apply the methods to weather-disaster
+damages, stock returns, and city and firm sizes. Their simulations calibrate the size of the tests
+for data drawn exactly from the GEV model. They do not report power, do not test the methods on
+data whose extremes are only approximately GEV (the usual situation), treat serial dependence only
+briefly (an appeal to weak-dependence results and one simulation for the city-size data), and do
+not check whether the Bayesian model recovers known parameter paths. For climate applications these are the questions that
 matter:
 
 \begin{enumerate}
@@ -143,8 +146,10 @@ The tests compared are:
   constant-parameter fit and average information $V$,
   $L_T=T^{-2}\sum_t\big(\sum_{l\ge t}S_l\big)'V^{-1}\big(\sum_{l\ge t}S_l\big)$. The test rejects
   when $L_T\exp(a_0+a_1\hat\xi+a_2\hat\xi^2)>1$, with coefficients calibrated by simulation so that
-  the rejection rate is at most 5\% for every true $\xi$ on a grid (their Appendix~B). We
-  recalibrated the coefficients for each record length and $k$ used here.
+  the rejection rate is at most 5\% for every true $\xi$ on a grid and otherwise as close to 5\% as
+  possible (their Appendix~B: ten values of $\xi$ in $[-0.5,1.5]$). We recalibrated the
+  coefficients in the same way for each record length and $k$ used here, with 40,000 simulated
+  null records per grid value (they used 10,000).
 \item \textbf{Location-trend LR}: GEV with $\mu_t=\mu_0+\mu_1 t$, likelihood-ratio test of
   $\mu_1=0$ against $\chi^2_1$. This is the standard tool in climate science (e.g.\ Coles, 2001).
 \item \textbf{Two halves}: separate GEV fits to the first and second halves of the record, LR
@@ -183,8 +188,12 @@ maximum likelihood to the same records, except the Bayesian model.
   $m_t$, with $\sigma_t=s_t\alpha_t^{\xi_t}$ and $\mu_t=m_t+(s_t/\xi_t)(\alpha_t^{\xi_t}-1)$.
   The innovation standard deviations are $\gamma=\mathrm{sg}\cdot g/\sqrt T$ with
   $g\sim\mathrm{Exp}(1)$ and scale factors $\mathrm{sg}=1,0.5,0.5$ for $\xi,\alpha,s$ (and the
-  scale level for $m$). We use 4 chains of 1,000 warm-up and 1,000 sampling iterations
-  (\texttt{adapt\_delta} 0.95); the authors used 5,000 and 10,000 for single published fits. We
+  scale level for $m$), the prior means the paper calls $g$ (their eq.~15). We use 4 chains of
+  1,000 warm-up and 1,000 sampling iterations (\texttt{adapt\_delta} 0.95, against Stan's default of
+  0.8 in the authors' runs); the authors used 5,000 and 10,000 for single published fits. Like
+  their replication scripts, we use the draws without the importance-sampling correction for the
+  extended-support likelihood described in their Section~3.2.3, whose weights they report to be
+  essentially 1. We
   also report the posterior mean, and a run with a tighter prior ($\mathrm{sg}=0.25$ for all
   three).
 \end{description}
