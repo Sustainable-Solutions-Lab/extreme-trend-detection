@@ -308,7 +308,7 @@ findings, for 85-year records with one value per year unless stated:
   in which the estimate misses the true risk by more than a factor of 2 either way; 44% with no
   change and the correct model). With the wrong driving variable the share of misses rises from 65% to 75%
   when the width follows an accelerating mean (a linear time trend cannot follow it), and from 55%
-  to 69% when the width changes at constant mean (a mean-state model cannot see it). When the mean accelerates but the width changes linearly in time
+  to 69% when the width changes at constant mean (a mean-state model cannot see it). When the mean rises at an increasing rate but the width changes linearly in time
   (`warm_time` cases), the mean-state model still does as well as any (64% against 68% for the
   location + width trend), because following the mean path matters more than the driver of the
   width. AIC cannot reliably identify the driver, but an AIC-weighted average of the constant,

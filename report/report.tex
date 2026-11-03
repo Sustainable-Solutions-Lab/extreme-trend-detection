@@ -44,7 +44,7 @@ unknown. With 85 years, using the wrong driving variable raises the share of rec
 current 99\% level misses the true risk by more than a factor of 2 from 65\% to 75\% when the width
 and tail follow an accelerating mean (a linear time trend cannot follow it), and from 55\% to 69\%
 when the width changes but the mean does not (a mean-state model cannot see it). When the mean
-accelerates, following its path matters more than getting right what drives the width, so the
+rises at an increasing rate, following its path matters more than getting right what drives the width, so the
 mean-state model loses little even when the width in fact changes on its own time course. Fitting a
 change that is not there is about as costly: with no change, the share rises from 44\% for the
 constant fit to 55--60\% for the location + width and covariate models. Averaging the candidate
@@ -88,7 +88,7 @@ models miss the current risk by more than a factor of 2 in 75--83\% of 85-year r
 for the mean-state model. When the width changes while the mean stays constant, the mean-state model
 sees nothing and misses 69\% against 55\%. When the mean moves linearly in time the two coincide, and
 with 30 years every model misses 66--87\% of records, so the choice of driving variable is
-secondary to record length. When the mean accelerates but the width and tail change linearly in time,
+secondary to record length. When the mean rises at an increasing rate but the width and tail change linearly in time,
 the mean-state model, now with the wrong driver, still does slightly better (64\% against 68\%),
 because missing the curvature of the mean costs more than misplacing the width. The data rarely
 reveal the driver: AIC cannot tell a width change from a mean change. But an AIC-weighted average of
@@ -221,7 +221,8 @@ for independent days, and from 500,000 simulated years of $Z$ for correlated day
 0.005 at $p=0.99$).
 
 The changes (Appendix, Table~\ref{tab:cases}) move one feature at a time over the record, along
-a linear, mid-record step or accelerating (exponential) path: the mean, the width ($\log s$), the
+a linear, mid-record step or accelerating path (exponential in time, so the feature changes at an
+increasing rate): the mean, the width ($\log s$), the
 tail parameter (log of $a$, $\nu$ or $\beta$), or, for the beta, the position of the mass within
 fixed bounds. A second set, the \emph{covariate-model cases}, is built so that a mean-state model
 is correct:
@@ -584,7 +585,7 @@ Table~\ref{tab:wrongdetail} splits the misses into under- and overstatement.}
 \item \textbf{For 30-year records the choice matters little}: every model misses 66--87\% of
   records, and within each true process the models differ by 5--13 points, while sampling noise
   alone causes 71\%.
-\item \textbf{When the mean accelerates, the mean-state model loses little even if the width follows
+\item \textbf{When the mean rises at an increasing rate, the mean-state model loses little even if the width follows
   time.} In the time-driven counterparts of the accelerating warming cases the covariate model's
   assumption about the width is wrong, yet it misses 64\% of 85-year records, against 68\% for the
   location + width trend and the Bayesian model and 71\% for the location trend. The time-trend
