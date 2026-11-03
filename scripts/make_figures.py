@@ -917,24 +917,27 @@ def table_power():
             ("gamma", "width", 0.2), ("gamma", "tail", 1.0), ("t", "mean", 0.5), ("t", "tail", 1.0),
             ("beta", "mean", 0.25), ("beta", "width", 0.1), ("beta", "tail", 0.2), ("beta", "alpha", 0.5)]
     Ts = [30, 45, 85, 150]
-    lines = [r"\begin{tabular}{llr" + "rr" * len(Ts) + "}", r"\toprule",
-             r" & & & " + " & ".join(rf"\multicolumn{{2}}{{c}}{{$T={T}$}}" for T in Ts) + r" \\",
-             " ".join(rf"\cmidrule(lr){{{4 + 2 * i}-{5 + 2 * i}}}" for i in range(len(Ts))),
-             r"Parent & Change & $\Delta X_{0.99}$ & " + " & ".join(["Nyb.", "LR"] * len(Ts)) + r" \\",
+    tests = [("nyblom_nominal", "Nyb."), ("trend_lr_nominal", "LR"), ("mk_nominal", "MK"), ("split_nominal", "Hlv.")]
+    n = len(tests)
+    lines = [r"\begin{tabular}{llr" + "r" * n * len(Ts) + "}", r"\toprule",
+             r" & & & " + " & ".join(rf"\multicolumn{{{n}}}{{c}}{{$T={T}$}}" for T in Ts) + r" \\",
+             " ".join(rf"\cmidrule(lr){{{4 + n * i}-{3 + n * (i + 1)}}}" for i in range(len(Ts))),
+             r"Parent & Change & $\Delta X_{0.99}$ & " + " & ".join([lab for _, lab in tests] * len(Ts)) + r" \\",
              r"\midrule"]
     for fam, knob, amt in rows:
         s = d[(d.family == fam) & (d.knob == knob) & np.isclose(d.amount, amt)]
         cells = []
         for T in Ts:
             r = s[s["T"] == T].iloc[0]
-            cells += [f"{r.nyblom_nominal:.2f}", f"{r.trend_lr_nominal:.2f}"]
+            vals = [int(np.floor(100 * r[c] + 0.5)) for c, _ in tests]     # round half up, as in the text
+            cells += [rf"\textbf{{{v}}}" if v == max(vals) else f"{v}" for v in vals]
         dx = s.d_rl100_indep.iloc[0]
         lines.append(f"{FAMILY[fam]} & {knob} {amt:g} & {dx:+.2f} & " + " & ".join(cells) + r" \\")
     s0 = d[(d.knob == "mean") & (d.amount == 0)]
     cells = []
     for T in Ts:
         st = s0[s0["T"] == T]
-        cells += [f"{st.nyblom_nominal.mean():.3f}", f"{st.trend_lr_nominal.mean():.3f}"]
+        cells += [f"{100 * st[c].mean():.1f}" for c, _ in tests]
     lines += [r"\midrule", r"All (mean) & no change & 0 & " + " & ".join(cells) + r" \\",
               r"\bottomrule", r"\end{tabular}"]
     TAB.mkdir(parents=True, exist_ok=True)

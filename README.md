@@ -341,7 +341,11 @@ stated:
      and tests sensitivity to record length (30, 45, 85 and 150 years).
    - Stage B is done (results in `data/results/stage_b_*.csv`). With one value per year all
      tests hold their 5% size at any persistence; several values per year from a persistent
-     daily series inflate false alarms badly unless the extremes are declustered.
+     daily series inflate false alarms badly unless the extremes are declustered. With one value
+     per year the Nyblom test is no more powerful than Mann–Kendall (at least as powerful, within a
+     point, in 95% of the 768 simulated changes; average power 47% against 45%); the location-trend
+     LR test is stronger for location shifts but weak for tail changes. With three values per year
+     the Nyblom test overtakes Mann–Kendall (average 56% against 47%, size-corrected).
 4. ~~Stage C~~ done (see above and the report): 30, 45 and 85 years, one or three values per
    year, correlated and independent days, the authors' prior and a tighter one. Importance
    reweighting and Bayes factors are not yet done.

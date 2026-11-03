@@ -14,22 +14,25 @@
 \setlength{\parskip}{0.45em}
 \setlength{\parindent}{0pt}
 
-\title{Detecting and quantifying change in extremes:\\a synthetic-data test of the M\"uller--Watson methods}
+\title{\vspace{-3.2em}Detecting and quantifying change in extremes:\\a synthetic-data test of the M\"uller--Watson methods}
 \author{Produced by Ken Caldeira with the help of Claude Code \\ \small\url{https://github.com/Sustainable-Solutions-Lab/extreme-trend-detection}}
 \date{Draft, 3 November 2026}
 
 \begin{document}
 \maketitle
+\vspace{-2.5em}
 
 \section*{Abstract}
 
 \emph{Questions and approach.} We asked three questions about the methods of M\"uller and Watson
 (2024) for extremes that change over time:
-\begin{enumerate}\setlength{\itemsep}{0pt}
+\vspace{-0.6\baselineskip}
+\begin{enumerate}\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}
 \item How reliably do they detect a change?
 \item How accurately do they estimate the current 1-in-100-year level?
 \item What happens when the model of the change is wrong?
 \end{enumerate}
+\vspace{-0.4\baselineskip}
 \noindent To answer them against a known truth, we generated synthetic daily records of 30 to 150 years from
 four distributions (temperature-like, precipitation-like, heavy-tailed and bounded), changed their
 mean, spread or tail in known ways, and applied the tests and estimators to the annual maxima:
@@ -42,7 +45,10 @@ detector of change in annual maxima: with one value per year its false-alarm rat
 Its power depends strongly on the record length and on the shape of the daily distribution. A
 mean shift of half a daily standard deviation over the record is detected in 89\% of 85-year
 records from a normal parent but in 24\% from a skewed, precipitation-like (gamma) parent, and in
-41\% and 9\% of 30-year records.
+41\% and 9\% of 30-year records. With one value per year, however, it is no more powerful than the
+simpler Mann--Kendall rank test, which detects change about as often or more often in almost every
+case we simulated; the Nyblom test pulls ahead when it uses the three largest values per year, which
+must then be declustered.
 
 \emph{Quantification.} Saying how large the change is, or what the current 1-in-100-year level
 is, is much harder. Even with no change and the correct model, the 99\% annual-maximum level
@@ -52,14 +58,10 @@ records and overstates it in 18\%. When extremes are changing, the methods we te
 authors' Bayesian random-walk model, are badly off in 51--59\% of 85-year records and in about
 three-quarters of 30-year records. The Bayesian model is no more accurate than a simple linear trend.
 
-\emph{Using the wrong model.} A change in extremes can be modelled as a function of time or as a
-function of the mean state (such as the local mean temperature), and which is physically right is
-usually unknown. Using the wrong one makes the estimated level clearly less reliable when the mean
-changes nonlinearly in time, or when the spread of the distribution changes while the mean does not,
-and the record itself rarely shows which model is right. Averaging the candidate models, each
-weighted by how well it fits the data, comes close to the best single model whatever the truth, and
-is the safest choice when the driver is unknown. With 30 years of data, sampling noise dominates and
-the choice of model matters little.
+\emph{Using the wrong model.} Change can be modelled as a function of time or of the mean state;
+which is right is usually unknown, the record rarely shows it, and the wrong choice matters most
+when the mean changes nonlinearly or the spread changes without the mean. Averaging the candidate
+models, weighted by how well each fits, comes close to the best single model whatever the truth.
 
 \section*{Summary}
 
@@ -71,11 +73,13 @@ day-to-day correlation, and their mean, width or tail was changed over records o
 With one value per year, all the tests we examined keep their nominal 5\% false-alarm rate, except
 that the conventional location-trend likelihood-ratio test is over-sized (7--10\%) for 30-year
 records. Power rises steeply with record length and is much lower for skewed or heavy-tailed
-parents, whose extremes are noisier relative to the daily variability. The Nyblom test is
-less powerful than a location-trend test against the change that test is built for, a
-linear shift in location, and much more powerful against changes in tail shape. Using the three or
-ten largest values per year adds power but, with strong day-to-day persistence, raises false
-alarms to 20--50\% unless the extremes are declustered.
+parents, whose extremes are noisier relative to the daily variability. With one value per year
+the Nyblom test is not the most powerful: the simpler Mann--Kendall rank test detects the simulated
+changes about as often or more often in almost every case, and a location-trend test is more
+powerful against shifts in location but much less powerful against changes in tail shape. The
+Nyblom test gains from using the three or ten largest values per year, which Mann--Kendall cannot
+use, but with strong day-to-day persistence these raise false alarms to 20--50\% unless the
+extremes are declustered.
 
 Detecting a change is not the same as measuring it. We scored more than a dozen estimators on a
 question that matters for risk assessment: if the estimated 99\% annual-maximum level for the most
@@ -318,7 +322,7 @@ percentage points on the pooled shares and about 3 points on differences between
 %=====================================================================================
 \section{Detecting change}
 
-\subsection{False alarms}
+\subsection{False alarms}\label{sec:size}
 
 With one value per year, all four tests hold their nominal size within Monte Carlo error at every
 record length and persistence level (Figure~\ref{fig:size}), except the location-trend LR test
@@ -347,8 +351,20 @@ much harder to detect for skewed or heavy-tailed parents (gamma: 9--41\%; $t$: 1
 annual maxima are more variable relative to the daily standard deviation. The location-trend LR
 test is more powerful against the change it is designed for, a linear shift in location (63\% at
 30 years and 96\% at 85 years for the normal mean shift, though part of the edge at 30 years
-comes from its over-sizing). The Nyblom test is much more powerful against a change in tail shape
-($t$ parent: 69\% vs 36\% at 85 years). The two tests are complementary rather than competing.
+comes from its over-sizing), but much less powerful against a change in tail shape ($t$ parent:
+36\% against 69\% for the Nyblom test at 85 years).
+
+With one value per year the Nyblom test is not the most powerful of the four. The rank-based
+Mann--Kendall test, which uses only the annual maxima, does well against both kinds of change (93\%
+and 73\% in the two examples). Over all 768 simulated changes with one value per year, with
+rejection rates corrected for size, it detects change at least as often as the Nyblom test, to
+within a point, in 95\% of cases; the average power is 47\% for Mann--Kendall, 45\% for the
+Nyblom and LR tests and 37\% for the two-halves test. The Nyblom test is ahead mainly for steps late
+in the record. Its advantage comes with more values per year, which Mann--Kendall cannot use: with
+the three largest values per year (size-corrected) it detects change at least as often as
+Mann--Kendall in 94\% of cases (average 56\% against 47\%), and more often than the LR test for tail
+changes (49\% against 39\%). In a persistent daily series these values must be declustered to hold
+the false-alarm rate (Section~\ref{sec:size}).
 
 \begin{figure}[H]
 \centering
@@ -362,11 +378,14 @@ Solid: Nyblom; dashed: location-trend LR.}
 
 \begin{table}[H]
 \centering
-\small
+\scriptsize
+\setlength{\tabcolsep}{2.6pt}
 \input{tables/power.tex}
-\caption{Power (nominal 5\% level) of the Nyblom (Nyb.) and location-trend LR tests for selected
-linear changes, one value per year, $\phi=0.5$. $\Delta X_{0.99}$: true change in the 99\% level
-over the record (baseline daily sd). Last row: size with no change, mean over parents.}
+\caption{Power (\%, nominal 5\% level) of the Nyblom (Nyb.), location-trend LR, Mann--Kendall (MK)
+and two-halves (Hlv.) tests for selected linear changes, one value per year, $\phi=0.5$; bold: the
+highest in each group. $\Delta X_{0.99}$: true change in the 99\% level over the record (baseline
+daily sd). Last row: size (\%) with no change, mean over parents; the LR test's edge at 30 years
+partly reflects its over-sizing.}
 \label{tab:power}
 \end{table}
 

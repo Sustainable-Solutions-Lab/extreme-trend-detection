@@ -1,21 +1,21 @@
-\begin{tabular}{llrrrrrrrrr}
+\begin{tabular}{llrrrrrrrrrrrrrrrrr}
 \toprule
- & & & \multicolumn{2}{c}{$T=30$} & \multicolumn{2}{c}{$T=45$} & \multicolumn{2}{c}{$T=85$} & \multicolumn{2}{c}{$T=150$} \\
-\cmidrule(lr){4-5} \cmidrule(lr){6-7} \cmidrule(lr){8-9} \cmidrule(lr){10-11}
-Parent & Change & $\Delta X_{0.99}$ & Nyb. & LR & Nyb. & LR & Nyb. & LR & Nyb. & LR \\
+ & & & \multicolumn{4}{c}{$T=30$} & \multicolumn{4}{c}{$T=45$} & \multicolumn{4}{c}{$T=85$} & \multicolumn{4}{c}{$T=150$} \\
+\cmidrule(lr){4-7} \cmidrule(lr){8-11} \cmidrule(lr){12-15} \cmidrule(lr){16-19}
+Parent & Change & $\Delta X_{0.99}$ & Nyb. & LR & MK & Hlv. & Nyb. & LR & MK & Hlv. & Nyb. & LR & MK & Hlv. & Nyb. & LR & MK & Hlv. \\
 \midrule
-Normal & mean 0.5 & +0.50 & 0.41 & 0.63 & 0.60 & 0.77 & 0.89 & 0.96 & 0.99 & 1.00 \\
-Normal & width 0.2 & +0.81 & 0.51 & 0.70 & 0.71 & 0.84 & 0.95 & 0.98 & 1.00 & 1.00 \\
-Gamma & mean 0.5 & +0.50 & 0.09 & 0.17 & 0.15 & 0.23 & 0.24 & 0.34 & 0.41 & 0.55 \\
-Gamma & width 0.2 & +1.58 & 0.21 & 0.34 & 0.34 & 0.47 & 0.58 & 0.69 & 0.84 & 0.92 \\
-Gamma & tail 1 & -1.98 & 0.20 & 0.27 & 0.28 & 0.35 & 0.47 & 0.52 & 0.73 & 0.73 \\
-Student-t & mean 0.5 & +0.50 & 0.11 & 0.22 & 0.19 & 0.29 & 0.30 & 0.46 & 0.52 & 0.69 \\
-Student-t & tail 1 & -8.59 & 0.28 & 0.21 & 0.42 & 0.26 & 0.69 & 0.36 & 0.93 & 0.50 \\
-Beta & mean 0.25 & +0.25 & 0.45 & 0.67 & 0.67 & 0.82 & 0.92 & 0.97 & 1.00 & 1.00 \\
-Beta & width 0.1 & +0.28 & 0.44 & 0.66 & 0.65 & 0.81 & 0.91 & 0.96 & 1.00 & 1.00 \\
-Beta & tail 0.2 & -0.11 & 0.38 & 0.56 & 0.55 & 0.70 & 0.85 & 0.90 & 0.98 & 0.99 \\
-Beta & alpha 0.5 & +0.07 & 0.31 & 0.45 & 0.49 & 0.59 & 0.80 & 0.82 & 0.98 & 0.97 \\
+Normal & mean 0.5 & +0.50 & 41 & \textbf{63} & 52 & 24 & 60 & \textbf{77} & 69 & 40 & 89 & \textbf{96} & 93 & 71 & 99 & \textbf{100} & 99 & 95 \\
+Normal & width 0.2 & +0.81 & 51 & \textbf{70} & 62 & 30 & 71 & \textbf{84} & 80 & 48 & 95 & \textbf{98} & \textbf{98} & 81 & \textbf{100} & \textbf{100} & \textbf{100} & 98 \\
+Gamma & mean 0.5 & +0.50 & 9 & \textbf{17} & 11 & 8 & 15 & \textbf{23} & 18 & 10 & 24 & \textbf{34} & 27 & 17 & 42 & \textbf{55} & 45 & 30 \\
+Gamma & width 0.2 & +1.58 & 21 & \textbf{34} & 28 & 14 & 34 & \textbf{47} & 43 & 21 & 58 & \textbf{69} & 68 & 42 & 84 & \textbf{92} & 91 & 69 \\
+Gamma & tail 1 & -1.98 & 20 & \textbf{27} & 25 & 13 & 28 & \textbf{35} & \textbf{35} & 18 & 47 & 52 & \textbf{59} & 32 & 73 & 73 & \textbf{83} & 55 \\
+Student-t & mean 0.5 & +0.50 & 11 & \textbf{22} & 14 & 8 & 19 & \textbf{29} & 19 & 13 & 30 & \textbf{46} & 32 & 22 & 52 & \textbf{69} & 50 & 39 \\
+Student-t & tail 1 & -8.59 & 28 & 21 & \textbf{34} & 17 & 42 & 26 & \textbf{47} & 28 & 69 & 36 & \textbf{73} & 53 & 93 & 50 & \textbf{94} & 82 \\
+Beta & mean 0.25 & +0.25 & 45 & \textbf{67} & 57 & 28 & 67 & \textbf{82} & 76 & 44 & 92 & \textbf{97} & 96 & 78 & \textbf{100} & \textbf{100} & \textbf{100} & 98 \\
+Beta & width 0.1 & +0.28 & 44 & \textbf{66} & 55 & 28 & 65 & \textbf{81} & 74 & 44 & 91 & \textbf{96} & 95 & 77 & \textbf{100} & \textbf{100} & \textbf{100} & 98 \\
+Beta & tail 0.2 & -0.11 & 38 & \textbf{56} & 49 & 22 & 55 & \textbf{70} & 66 & 34 & 85 & \textbf{90} & \textbf{90} & 68 & 98 & \textbf{99} & \textbf{99} & 92 \\
+Beta & alpha 0.5 & +0.07 & 31 & \textbf{45} & 40 & 19 & 49 & \textbf{59} & 58 & 31 & 80 & 82 & \textbf{83} & 60 & \textbf{98} & 97 & \textbf{98} & 90 \\
 \midrule
-All (mean) & no change & 0 & 0.045 & 0.080 & 0.050 & 0.068 & 0.051 & 0.058 & 0.056 & 0.055 \\
+All (mean) & no change & 0 & 4.5 & 8.0 & 4.7 & 4.9 & 5.0 & 6.8 & 5.1 & 4.9 & 5.1 & 5.8 & 4.9 & 5.1 & 5.6 & 5.5 & 5.0 & 5.5 \\
 \bottomrule
 \end{tabular}
