@@ -302,27 +302,101 @@ def fig_spread(png):
     _save(fig, "fig02_spread", png)
 
 
+_SCEN = {}
+
+
+def get_scenario(family, ch, **kw):
+    """Scenario, loaded once per run (or None if that scenario was not run)."""
+    key = (family, ch, tuple(sorted(kw.items())))
+    if key not in _SCEN:
+        _SCEN[key] = Scenario(family, ch, **kw) if scenario_path(family, ch, **kw).exists() else None
+    return _SCEN[key]
+
+
+def short_label(family, ch):
+    """Two-line row label: parent, then the change."""
+    a = ch.amount
+    what = {"mean": f"mean +{a:g} sd", "width": f"width ×{np.exp(a):.2f}",
+            "tail": f"tail: log(shape) +{a:g}", "alpha": f"position: log α +{a:g}",
+            "warm_coupled": "warming, coupled", "precip_scaling": f"wetter ×{np.exp(a):.2f}",
+            "precip_shape": "wetter, heavier tail"}[ch.knob] if a else "no change"
+    coupled = ch.knob in ("warm_coupled", "precip_scaling", "precip_shape")
+    shape = {"linear": " (linear)" if coupled else "", "step50": " (step)",
+             "exp": " (accel.)"}[ch.shape] if a else ""
+    return f"{FAMILY[family]}\n{what}{shape}"
+
+
+def fig_bands(name, rows, cols, names, png, row_height=1.45, note=None):
+    """Small multiples of the spread of the estimated X_0.99 paths over 100 records (median,
+    25-75%, 5-95%) against the truth. rows: (family, change); cols: (title, design kwargs);
+    names: estimators overlaid in each panel. Rows share a y-axis."""
+    fig, axes = plt.subplots(len(rows), len(cols), figsize=(6.5, 0.7 + row_height * len(rows)),
+                             sharey="row", squeeze=False)
+    for i, (family, ch) in enumerate(rows):
+        for j, (title, kw) in enumerate(cols):
+            ax = axes[i, j]
+            sc = get_scenario(family, ch, **kw)
+            if sc is None:
+                ax.text(0.5, 0.5, "not run", transform=ax.transAxes, ha="center", va="center",
+                        color=MUTED, fontsize=7)
+                continue
+            for n in names:
+                _spread(ax, sc, n, EST[n][1])
+            if i == 0:
+                ax.set_title(title, fontsize=8)
+            if i == len(rows) - 1:
+                ax.set_xlabel("Year")
+        axes[i, 0].set_ylabel(short_label(family, ch), fontsize=7.5)
+    h = [Line2D([], [], color=INK, lw=2, label="Truth")]
+    h += [Line2D([], [], color=EST[n][1], ls=EST[n][2], label=f"{EST[n][0]}: median, 25–75%, 5–95%")
+          for n in names]
+    fig.legend(handles=h, loc="lower center", ncol=len(h), bbox_to_anchor=(0.5, -0.01),
+               fontsize=7.5)
+    fig.tight_layout(rect=(0, 0.03, 1, 1))
+    _save(fig, name, png)
+
+
+BY_LENGTH = [("30 years", dict(T=30)), ("45 years", dict(T=45)), ("85 years", dict(T=85))]
+
+
 def fig_record_length(png):
     rows = [("normal", pa.Change("mean", "linear", 0.5)),
             ("normal", pa.Change("warm_coupled", "exp", 0.5))]
-    Ts = [30, 45, 85]
-    fig, axes = plt.subplots(len(rows), len(Ts), figsize=(6.5, 3.9), sharey="row")
-    for i, (family, ch) in enumerate(rows):
-        for j, T in enumerate(Ts):
-            sc = Scenario(family, ch, T=T)
-            for n in ("trend", "tvp_median"):
-                _spread(axes[i, j], sc, n, EST[n][1])
-            if i == 0:
-                axes[i, j].set_title(f"{T} years", fontsize=8)
-        axes[i, 0].set_ylabel(ROW_LABEL[(family, ch.knob)], fontsize=7.5)
-    for ax in axes[-1]:
-        ax.set_xlabel("Year")
-    h = [Line2D([], [], color=INK, lw=2, label="Truth"),
-         Line2D([], [], color=BLUE, label="Location trend: median, 25–75%, 5–95%"),
-         Line2D([], [], color=ORANGE, label="Bayesian: median, 25–75%, 5–95%")]
-    fig.legend(handles=h, loc="lower center", ncol=3, bbox_to_anchor=(0.5, -0.05))
-    fig.tight_layout()
-    _save(fig, "fig03_record_length", png)
+    fig_bands("fig03_record_length", rows, BY_LENGTH, ["trend", "tvp_median"], png, row_height=1.6)
+
+
+def fig_paths_by_parent(png):
+    """One figure per parent: its standard changes (rows) by record length (columns)."""
+    for fam in FAMILIES:
+        rows = [(fam, ch) for ch in run_c.scenarios(fam) if ch.amount != 0]
+        fig_bands(f"fig_paths_{fam}", rows, BY_LENGTH, ["trend", "tvp_median"], png)
+
+
+def fig_paths_covariate(png):
+    warm = [(f, ch) for f in ("normal", "t", "beta") for ch in run_c.coupled_scenarios(f) if ch.amount]
+    wet = [("gamma", ch) for ch in run_c.coupled_scenarios("gamma") if ch.amount]
+    fig_bands("fig_paths_warming", warm, BY_LENGTH, ["trend", "cov2"], png)
+    fig_bands("fig_paths_wetter", wet, BY_LENGTH, ["trend", "cov2"], png)
+
+
+def fig_paths_values_per_year(png):
+    rows = [("normal", pa.Change("mean", "linear", 0.5)), ("gamma", pa.Change("width", "linear", 0.2)),
+            ("t", pa.Change("tail", "linear", 1.0)), ("beta", pa.Change("alpha", "linear", 0.5))]
+    cols = [("45 yr, 1/yr", dict(T=45)), ("45 yr, 3/yr", dict(T=45, k=3, r=3)),
+            ("85 yr, 1/yr", dict(T=85)), ("85 yr, 3/yr", dict(T=85, k=3, r=3))]
+    fig_bands("fig_paths_values_per_year", rows, cols, ["trend", "tvp_median"], png)
+
+
+def fig_paths_prior(png):
+    rows = [("normal", pa.Change("mean", "linear", 0.5)), ("gamma", pa.Change("mean", "step50", 0.5)),
+            ("t", pa.Change("tail", "linear", 1.0)), ("beta", pa.Change("width", "linear", 0.1))]
+    cols = [("45 yr, authors' prior", dict(T=45)), ("45 yr, tighter prior", dict(T=45, prior="tight")),
+            ("85 yr, authors' prior", dict(T=85)), ("85 yr, tighter prior", dict(T=85, prior="tight"))]
+    fig_bands("fig_paths_prior", rows, cols, ["tvp_median"], png)
+    warm = [("normal", pa.Change("warm_coupled", "exp", 0.5)), ("t", pa.Change("warm_coupled", "exp", 0.5)),
+            ("gamma", pa.Change("precip_scaling", "exp", 0.2)), ("gamma", pa.Change("precip_shape", "exp", 0.2))]
+    cols = [("85 yr, authors' prior", dict(T=85)), ("85 yr, tighter prior", dict(T=85, prior="tight"))]
+    fig_bands("fig_paths_prior_covariate", warm, cols, ["tvp_median", "cov2"], png)
 
 
 def fig_power(png):
@@ -669,6 +743,10 @@ def main():
 
     jobs = {"examples": lambda: fig_examples(args.png), "spread": lambda: fig_spread(args.png),
             "record_length": lambda: fig_record_length(args.png), "power": lambda: fig_power(args.png),
+            "paths_parent": lambda: fig_paths_by_parent(args.png),
+            "paths_covariate": lambda: fig_paths_covariate(args.png),
+            "paths_k": lambda: fig_paths_values_per_year(args.png),
+            "paths_prior": lambda: fig_paths_prior(args.png),
             "size": lambda: fig_size(args.png), "exceedance": lambda: fig_exceedance(rec(), args.png),
             "heatmap": lambda: fig_heatmap(head(), args.png), "change": lambda: fig_change(rec(), args.png),
             "bayes": lambda: fig_bayes(rec(), args.png), "prior_phi": lambda: fig_prior_phi(head(), args.png),

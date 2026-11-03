@@ -14,7 +14,7 @@
 \setlength{\parindent}{0pt}
 
 \title{Detecting and quantifying change in extremes:\\a synthetic-data test of the M\"uller--Watson methods}
-\author{extreme-trend-detection project \\ \small\url{https://github.com/Sustainable-Solutions-Lab/extreme-trend-detection}}
+\author{Produced by Ken Caldeira with the help of Claude Code \\ \small\url{https://github.com/Sustainable-Solutions-Lab/extreme-trend-detection}}
 \date{Draft, 3 November 2026}
 
 \begin{document}
@@ -333,6 +333,55 @@ per year is larger for shorter records.}
 \label{fig:length}
 \end{figure}
 
+\subsection{Estimated paths, case by case}
+
+Figures~\ref{fig:pnormal}--\ref{fig:pbeta} repeat Figure~\ref{fig:length} for every standard
+case, one figure per parent, comparing the location trend (blue) with the Bayesian posterior median
+(orange). Four patterns recur.
+
+\begin{itemize}
+\item \textbf{Mean and width changes are tracked on average by both estimators}, in all four
+  parents. What changes with record length is the spread: the 5--95\% band at 85 years is 37--50\% as
+  wide as at 30 years.
+\item \textbf{A step change is smoothed into a ramp.} Neither estimator locates the step; the
+  location trend replaces it by a straight line, and the Bayesian median by a gentler rise.
+\item \textbf{Short records from skewed or heavy-tailed parents give the Bayesian model a long
+  upper tail.} At 30 years the upper edge of its 5--95\% band for the gamma and $t$ parents lies far
+  above the truth (up to about 2.5 times the true level for the $t$), because the posterior of the tail
+  index is wide and right-skewed when there are few maxima.
+\item \textbf{Tail changes are where the two estimators differ most.} The location trend cannot
+  represent a change in tail: it captures about a third of the fall in the 99\% level for the
+  gamma parent and almost none (5--7\%) for the $t$. The Bayesian median captures more, 51--64\%
+  for the gamma and 37--50\% for the $t$, increasing with record length. In the bounded beta parent the location trend does the opposite and overshoots the tail
+  and position changes (by a factor of about 1.9 for the tail change), presumably because a straight-line location with fixed scale and shape is
+  the only way it can absorb a change in the shape of the maxima near the bound.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_paths_normal.pdf}
+\caption{Normal parent, all standard changes. Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Columns: record length; the total change over the record is the same in each column. Units: baseline daily sd.}
+\label{fig:pnormal}
+\end{figure}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_paths_gamma.pdf}
+\caption{Gamma (precipitation-like) parent, all standard changes. Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Columns: record length; the total change over the record is the same in each column. Units: baseline daily sd.}
+\label{fig:pgamma}
+\end{figure}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_paths_t.pdf}
+\caption{Student-$t$ (heavy-tailed) parent, all standard changes. Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Columns: record length; the total change over the record is the same in each column. Units: baseline daily sd.}
+\label{fig:pt}
+\end{figure}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_paths_beta.pdf}
+\caption{Beta (bounded) parent, all standard changes. Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Columns: record length; the total change over the record is the same in each column. Units: baseline daily sd.}
+\label{fig:pbeta}
+\end{figure}
+
 \subsection{The noise floor}
 
 Much of the error has nothing to do with change. With no change and the correctly specified
@@ -364,7 +413,10 @@ over the standard cases (20 cases including the four with no change) and the cov
   exceedance 0.5\% at 85 years, and below 0.01\% at 30 years, where the posterior of a high
   quantile has a very long right tail).
 \item \textbf{Three values per year help modestly} (location trend 28\% at 85 years, Bayesian
-  31\%), when declustered.
+  31\%), when declustered. Figure~\ref{fig:pk} shows the bands narrowing a little, and the
+  Bayesian median following the $t$ tail change more closely; it also shows the unconverged
+  Bayesian fits for the beta parent (Section~\ref{sec:bayes}) as a wide upper band early in the
+  85-year record.
 \item \textbf{Record length matters more than the method.} Every estimator is worse at 30 years
   than at 85, and the spread between the best and worst sensible methods (about 10 points) is
   smaller than the floor itself.
@@ -386,6 +438,13 @@ factor 2 of the ideal 1\%.}
 (right) the true risk at least twofold, pooled over cases, by design. Columns marked * are the
 covariate-model cases.}
 \label{fig:heatmap}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_paths_values_per_year.pdf}
+\caption{One against three values per year (declustered, at least three days apart), at 45 and 85 years, for four cases. Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Units: baseline daily sd.}
+\label{fig:pk}
 \end{figure}
 
 \begin{table}[H]
@@ -433,8 +492,33 @@ cannot, and it is estimated from all daily values, not only the extremes, so it 
 noisy than the extremes themselves. Letting the tail index also depend on the covariate makes
 things worse (57\%), because the tail index then follows the noise in the covariate.
 
+Figures~\ref{fig:pwarm} and \ref{fig:pwet} show the paths. The covariate model (yellow) follows
+the accelerating rise; the location trend (blue), a straight line, cuts across it and ends well below
+the truth (by 0.4 daily sd for the normal parent, 40\% of the true change), and this shortfall
+does not shrink with record length, because it comes from the form of the model, not from noise.
+The covariate model's median also ends somewhat low (by 0.2), but so does its oracle version with the
+true mean as covariate (by 0.14): this is mostly the downward tendency of a typical high-quantile
+estimate seen already in the no-change case. Its bands widen at the end of short records, where the
+smoothed covariate is least certain. For the $t$ parent, whose tail gets heavier as it warms, the
+shortfall is larger (0.8 against 1.5 for the location trend), because the model holds the tail index
+constant.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_paths_warming.pdf}
+\caption{Temperature-like covariate-model cases: the mean rises, and the width (and for the $t$ and beta the tail) follow it. Location trend (blue) against the mean-state covariate model (yellow). Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Columns: record length; the total change over the record is the same in each column. Units: baseline daily sd.}
+\label{fig:pwarm}
+\end{figure}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_paths_wetter.pdf}
+\caption{Precipitation-like covariate-model cases (gamma): every quantile scales with the mean, and in the last row the tail also gets heavier. Location trend (blue) against the mean-state covariate model (yellow). Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Columns: record length; the total change over the record is the same in each column. Units: baseline daily sd.}
+\label{fig:pwet}
+\end{figure}
+
+
 %=====================================================================================
-\section{The Bayesian random-walk model}
+\section{The Bayesian random-walk model}\label{sec:bayes}
 
 \paragraph{Credible intervals.}
 The 90\% intervals for the last year's $\Xp$ contain the truth in 93--100\% of records, so they
@@ -466,6 +550,24 @@ Shrinking the random-walk scales for $\xi$, $\alpha$ and $s$ to 0.25 nearly elim
 convergence problems (R-hat $\le1.05$ in every fit, median 1--6 divergences). It improves accuracy
 slightly at 85 years (35\% against 39\% understated) and leaves 45 years unchanged (34\%), and it
 brings interval coverage closer to nominal (93--98\%). See Appendix Figure~\ref{fig:prior}.
+Figure~\ref{fig:pprior} shows the cost: the tighter prior narrows the bands, but it also makes the
+paths stiffer, so for the $t$ tail change the median follows less of the early, high values.
+Figure~\ref{fig:ppriorcov} compares both priors with the covariate model in the covariate-model
+cases.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_paths_prior.pdf}
+\caption{Bayesian posterior median with the authors' prior and a tighter prior on the random-walk scales, at 45 and 85 years. Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Units: baseline daily sd.}
+\label{fig:pprior}
+\end{figure}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_paths_prior_covariate.pdf}
+\caption{Covariate-model cases at 85 years: Bayesian posterior median (orange) with the authors' and the tighter prior, and the mean-state covariate model (yellow). Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Units: baseline daily sd.}
+\label{fig:ppriorcov}
+\end{figure}
+
 
 \paragraph{Time reversal.}
 The model's prior is symmetric in time, so fitting a record in reverse order should give the
