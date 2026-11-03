@@ -112,6 +112,9 @@ curl -L -o replication.zip \
 unzip -q replication.zip -d files
 ```
 
+A copy of the paper with its supplement, if you have one, goes in the same folder as
+`external/muller-watson-2024/Muller-Watson_2024_REStat_with_supplement.pdf` (also not in git).
+
 The archive contains:
 
 - MATLAB scripts (`Matlab/`, `Matlab_Functions/`)
