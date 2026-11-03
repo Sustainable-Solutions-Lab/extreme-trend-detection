@@ -6,8 +6,9 @@ starting point is a Python replication of
 > Müller, U. K. and M. W. Watson (2024), "Time Varying Extremes," *Review of Economics and
 > Statistics*, doi:10.1162/rest_a_01528.
 
-We will then test these methods on pseudo-data with known properties, and apply them to ERA5
-climate variables.
+We then tested the methods on pseudo-data with known properties: exact GEV data (Stage A), daily
+series from known parent distributions (Stage B, detection), and estimates of the current 99% level
+(Stage C, quantification). Applying them to ERA5 climate variables comes next.
 
 **Report:** [`report/report.pdf`](report/report.pdf) (source `report/report.tex`, figures and
 tables built by `scripts/make_figures.py`) summarizes the pseudo-data results: how well change is
@@ -48,14 +49,17 @@ tvextremes/
   critical_values.py  Monte Carlo calibration of the xi_hat-adjusted critical values; lookup
   pseudo.py       pseudo-data: GEV_k panels with known parameter paths (linear, accelerating, steps,
                   hump, random walk in mu, sigma or xi)
-  trend_tests.py  baselines: GEV with a linear trend in location (LR test), Mann-Kendall
+  trend_tests.py  baselines: GEV with a linear trend in location (LR test), Mann-Kendall, GEV with
+                  parameters linear in a covariate
   power.py        power study: simulate a design, nominal and size-adjusted rejection rates
   parents.py      Stage B: daily AR(1) Gaussian series mapped to known parents (normal, gamma,
                   Student-t, beta; tanh-normal available but not run), k largest per year
-                  with declustering, exact truth for annual-maximum quantiles
+                  with declustering, exact truth for annual-maximum quantiles; covariate-model
+                  and time-driven cases
   stage_b.py      Stage B: simulate a configuration, size/power and return-level accuracy
   stage_c.py      Stage C: Bayesian TVP fits (cmdstanpy) and MLE estimators (constant, trends,
-                  covariate models) of the X_p paths, scored against the exact truth
+                  covariate models, AIC choice and AIC-weighted average) of the X_p paths,
+                  scored against the exact truth
 stan/
   gev_4rw.stan    the authors' four-random-walk GEV model (same density; leaner output)
 scripts/
@@ -72,6 +76,7 @@ tests/
   test_critical_values.py  calibration machinery
   test_power.py            pseudo-data generator, trend tests, time-reversal invariance
   test_stage_b.py          parent transforms, declustering, exact truth, return-level scoring
+  test_stage_c.py          Stage C estimators: smoother, covariate and AIC estimators, scoring
   test_replication.py      reproduces Tables 1 and 2 of the paper from the authors' data
 docs/
   power_study_plan.md      design of the pseudo-data power and robustness study
@@ -181,7 +186,7 @@ and `cv_xi.csv`. `get_adjustment` prefers our own calibration where one exists a
 the authors' (`source = mw2024`). New designs, such as the 85-year ERA5 record, are calibrated
 with `scripts/calibrate_cv.py --k K --T T`.
 
-## Power study, Stage A: first results
+## Power study, Stage A: exact GEV data
 
 These results come from data drawn exactly from GEV_k, with known changes in µ, σ or ξ. The
 setup:
@@ -243,6 +248,31 @@ Calibration note for k = 10, T = 85: on two independent validation sets (seeds 7
 Nyblom coefficients reject 5.3–5.5% at ξ ≈ −0.3 to −0.1, which is slightly above 5%. A
 recalibration with a new seed (2027) gave almost the same coefficients, so the excess, of about
 0.3 percentage points, is a small real bias rather than noise in the fit.
+
+## Stage B: detection with daily data
+
+Daily AR(1) series (φ = 0, 0.5, 0.8) are mapped to four parents (normal, gamma with shape 2,
+Student-t with 6 d.f., beta(4, 4)), and their mean, width, tail or (beta) position changes over
+30–150 years along linear, step or accelerating paths, at four sizes each. Tests: the Nyblom test,
+the location-trend LR test, Mann–Kendall and a two-halves test. 10,000 records with no change and
+2,000 per change; results in `data/results/stage_b_*.csv` and Section 3 of the report.
+
+- **Size.** With one value per year every test holds its 5% size at every persistence level,
+  except the location-trend LR test at 30 years (7–10%). Several values per year from a persistent
+  series inflate false alarms (k = 3: 21–23% at φ = 0.8; k = 10: 46–51%) unless the values are
+  declustered (at least 3 days apart: 9–12% for k = 10).
+- **Power** rises steeply with record length and is much lower for skewed or heavy-tailed parents
+  (normal mean shift of 0.5 sd: Nyblom 41%, 60%, 89%, 99% at 30, 45, 85, 150 years; gamma 9–41%).
+- **Nyblom against the simpler tests.** With one value per year the Nyblom test is no more
+  powerful than Mann–Kendall (at least as powerful, within a point, in 95% of the 768 simulated
+  changes; average power 47% against 45%). The location-trend LR test is stronger for location
+  shifts but weak for tail changes (t parent at 85 years: 36% against 69% for Nyblom). With three
+  values per year the Nyblom test overtakes Mann–Kendall (average 56% against 47%, size-corrected).
+
+This differs from Stage A, where σ or ξ changes with the GEV location held fixed, so the annual
+maxima barely move in median and Mann–Kendall misses the change. In the daily-data cases a wider
+daily distribution or a heavier tail moves the whole distribution of annual maxima, which a rank
+test detects.
 
 ## Did Müller and Watson validate with pseudo-data?
 
@@ -328,63 +358,28 @@ stated:
 - The Bayesian model passes a time-reversal check (forward and reversed posterior paths agree to
   within 1% of the interval width).
 
-## Roadmap
+## Estimators beyond the paper
 
-1. ~~Critical-value calibration in Python (Appendix B)~~ done for k largest; exceedance
-   (Bonferroni) calibration still to do.
-2. ~~Nyblom stability test~~ done; the joint L* test still to do.
-3. Pseudo-data size and power studies (`docs/power_study_plan.md`).
-   - Stage A (exact GEV_k data with known paths) is done; see the results above.
-   - Stage B (daily data from known parents: normal, gamma, Student-t and a bounded beta, with
-     serial correlation) is running. It measures size and power when the extremes are only
-     approximately GEV, comparing the paper's Nyblom test with the GEV linear-trend test,
-     Mann–Kendall, and a simple two-segment test (separate GEV fits to the early and recent
-     halves of the record). It also compares estimated return levels X_p (the level that 50%, 90%,
-     95% or 99% of annual maxima stay below) with the truth implied by the generating function,
-     and tests sensitivity to record length (30, 45, 85 and 150 years).
-   - Stage B is done (results in `data/results/stage_b_*.csv`). With one value per year all
-     tests hold their 5% size at any persistence; several values per year from a persistent
-     daily series inflate false alarms badly unless the extremes are declustered. With one value
-     per year the Nyblom test is no more powerful than Mann–Kendall (at least as powerful, within a
-     point, in 95% of the 768 simulated changes; average power 47% against 45%); the location-trend
-     LR test is stronger for location shifts but weak for tail changes. With three values per year
-     the Nyblom test overtakes Mann–Kendall (average 56% against 47%, size-corrected).
-4. ~~Stage C~~ done (see above and the report): 30, 45 and 85 years, one or three values per
-   year, correlated and independent days, the authors' prior and a tighter one. Importance
-   reweighting and Bayes factors are not yet done.
-5. Alternative models for the change in return levels (see below): implemented as Stage C
-   estimators; an external covariate (global mean temperature) is still to do.
-6. ERA5: build k-largest or exceedance panels per grid cell or region, decluster to handle serial
-   dependence, then run the tests and the estimators.
+The Bayesian model lets every parameter wander as a random walk, which asks a lot of a few decades
+of extremes. Stage C adds more constrained models:
 
-### Alternative models for the change
+- **Trends in time:** `trend` (μ linear), `trend2` (μ and log σ linear), `trend3` (all three).
+- **Mean-state covariate models:** `cov2` (μ and log σ linear in a local-linear smooth, 10-year
+  bandwidth, of the annual mean of all days; ξ constant), `cov3` (all three linear in the raw
+  annual mean; unstable), and oracles with the true mean path (`cov2_true`, `cov3_true`).
+- **When the form is unknown:** `aic` (lowest AIC among constant, `trend`, `trend2`, `cov2`) and
+  `aic_avg` (Akaike-weighted average of their X_p paths).
 
-The Bayesian model lets every parameter wander as a random walk, which asks a lot of a few
-decades of extremes. Two more constrained models are probably closer to what the data can
-support:
+Test cases where the covariate model is right are the `warm_coupled`, `precip_scaling` and
+`precip_shape` knobs in `parents.py` (`scripts/stage_c.py --coupled`); their time-driven
+counterparts, with the same end states but width and tail linear in time, are `warm_time`
+(`--time-driven`).
 
-1. **Linear trends in all three GEV parameters.** μ_t, log σ_t and ξ_t each linear in time. This
-   extends the location-only trend fit, which misses changes in width and tail. Implemented as
-   `trend3`, with `trend2` (ξ constant). Neither beats the location-only trend on average: the
-   gain where the width or tail really changes is outweighed by the extra variance elsewhere.
-2. **Parameters as monotone functions of the mean state (covariate model).** The GEV parameters
-   depend on a covariate c_t, e.g. μ_t = a_μ + b_μ c_t, log σ_t = a_σ + b_σ c_t,
-   ξ_t = a_ξ + b_ξ c_t, where c_t is a smoothed estimate of the local mean (or a global-mean
-   temperature series). This asks how the distribution changes as the location warms (for
-   temperature) or as mean precipitation rises (for precipitation), and lets nonlinear change in
-   time enter through c_t. It needs test cases where it is the correct model, for example:
-   - *Temperature-like:* a warming path that is flat and then accelerates, with the width and
-     tail of the daily distribution changing in proportion to the warming.
-   - *Precipitation-like:* a gamma parent whose scale is proportional to the mean, so every
-     quantile scales with the mean (a Clausius–Clapeyron-type change), possibly with the shape
-     changing too.
-   The covariate would be estimated from all days of the year, not just the extremes, so it
-   carries much more information than the extremes alone. Each case should also be fitted with
-   the time-trend and Bayesian models, to see how much is lost when the change is not linear
-   in time.
+## Not yet done
 
-   Implemented: the test cases are the `warm_coupled`, `precip_scaling` and `precip_shape` knobs
-   in `parents.py` (`scripts/stage_c.py --coupled`), and the estimators are `cov2` (μ and log σ
-   linear in a local-linear smooth, 10-year bandwidth, of the annual mean; ξ constant),
-   `cov3` (all three linear in the raw annual mean; unstable) and their oracles with the true mean
-   path. `cov2` is the best estimator in these cases (results above).
+- Apply the tests and estimators to ERA5 (85 years) at selected grid cells or regions, with
+  declustered values.
+- Exceedance (Bonferroni) critical values, the joint L* test and the Bayes factors of the paper.
+- An external covariate (global mean temperature) for the covariate model, and seasonality in the
+  synthetic data.
+- Uncertainty intervals for the MLE estimators of the current return level, with a coverage check.
