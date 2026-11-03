@@ -12,6 +12,7 @@ dependencies = ["numpy", "scipy", "threadpoolctl"]
 [project.optional-dependencies]
 dev = ["pytest"]
 stan = ["cmdstanpy"]   # Stage C; then run: python -c "import cmdstanpy; cmdstanpy.install_cmdstan()"
+report = ["matplotlib", "pandas"]   # scripts/make_figures.py
 
 [tool.setuptools]
 packages = ["tvextremes"]

@@ -12,3 +12,11 @@ data/output/
 # Compiled Stan executables (built by cmdstanpy next to the .stan file)
 stan/*
 !stan/*.stan
+
+# LaTeX build files (the report PDF is committed)
+report/*.aux
+report/*.log
+report/*.fls
+report/*.fdb_latexmk
+report/*.out
+report/*.toc

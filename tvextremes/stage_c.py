@@ -167,15 +167,36 @@ def _panel(family, change, k, T, phi, r, seed, rep, with_mean=False):
 
 
 # Further MLE estimators, computed after the fact by regenerating the panels from their seeds
-# (cheap: no Stan). Each fits mu_t, log sigma_t and xi_t linear in a covariate c_t:
-#   trend3     c_t = time (linear trends in all three parameters)
-#   cov3       c_t = annual mean of all days of year t (what an analyst can compute)
-#   cov3_true  c_t = the true mean path m_t (an oracle covariate, e.g. a known warming curve)
-#   trend2     linear trends in mu and log sigma, constant xi
+# (cheap: no Stan). Each fits GEV parameters linear in a covariate c_t (trend_tests.
+# fit_gev_covariate):
+#   trend3     mu_t, log sigma_t and xi_t linear in time
+#   trend2     mu_t and log sigma_t linear in time, constant xi
+#   cov3       all three linear in the annual mean of all days of year t (what an analyst can
+#              compute; unstable: xi follows the year-to-year noise of the covariate)
+#   cov3_true  all three linear in the true mean path m_t (an oracle covariate)
+#   cov2       mu_t and log sigma_t linear in a smoothed annual mean (local-linear smoother,
+#              Gaussian kernel, SMOOTH_YEARS bandwidth), constant xi: the usual climate practice
+#   cov2_true  mu_t and log sigma_t linear in the true m_t, constant xi (oracle)
 #   recent30   constant GEV fitted to the last 30 years only (a common practical shortcut;
 #              equal to the constant fit when T <= 30); its path is flat
-EXTRA_NAMES = ("trend3", "cov3", "cov3_true", "trend2", "recent30")
+EXTRA_NAMES = ("trend3", "cov3", "cov3_true", "trend2", "recent30", "cov2", "cov2_true")
 RECENT = 30
+SMOOTH_YEARS = 10.0
+
+
+def smooth_local_linear(y, h=SMOOTH_YEARS):
+    """Local-linear kernel smoother (Gaussian kernel, bandwidth h in years) of a yearly series.
+    Unlike a centred moving average it has no boundary bias for a linear trend, which matters
+    because the last year is the one scored."""
+    y = np.asarray(y, float)
+    t = np.arange(len(y), dtype=float)
+    out = np.empty_like(y)
+    for i in range(len(y)):
+        w = np.exp(-0.5 * ((t - t[i]) / h) ** 2)
+        d = t - t[i]
+        s0, s1, s2 = w.sum(), (w * d).sum(), (w * d * d).sum()
+        out[i] = ((s2 * w - s1 * w * d) @ y) / (s0 * s2 - s1 * s1)
+    return out
 
 
 def _extra_job(args):
@@ -184,69 +205,71 @@ def _extra_job(args):
     from .pseudo import time_index
     from .stage_b import _start
     from .trend_tests import fit_gev_covariate
-    family, change, k, T, phi, r, seed, rep = args
+    family, change, k, T, phi, r, seed, rep, names = args
     X, amean = _panel(family, change, k, T, phi, r, seed, rep, with_mean=True)
     m_true = pa.parameter_paths(family, change, T)[0]
-    out = np.full((len(EXTRA_NAMES), len(PROBS), T), np.nan)
+    covariate = {"trend3": time_index(T), "trend2": time_index(T), "cov3": amean,
+                 "cov3_true": m_true, "cov2": smooth_local_linear(amean), "cov2_true": m_true}
+    out = np.full((len(names), len(PROBS), T), np.nan)
     with np.errstate(all="ignore"):
         start = fit_local(X, _start(X))
         if not start.success:
             return rep, out
-        for i, c in enumerate((time_index(T), amean, m_true)):
+        for i, name in enumerate(names):
+            if name == "recent30":
+                Xr = X[-RECENT:]
+                fr = fit_local(Xr, _start(Xr)) if T > RECENT else start
+                if fr.success:
+                    for ip, p in enumerate(PROBS):
+                        out[i, ip] = fr.quantile(p)
+                continue
+            c = np.asarray(covariate[name], float)
             if np.ptp(c) == 0:                           # no variation: the constant fit
                 c = np.zeros(T)
+            vary = ("mu", "sigma", "xi") if "3" in name else ("mu", "sigma")    # *3: xi too
             try:
-                f = fit_gev_covariate(X, c, start=start)
+                f = fit_gev_covariate(X, c, start=start, vary=vary)
             except (np.linalg.LinAlgError, ValueError, FloatingPointError):
                 continue
             if f.success:
                 mu, sg, xi = f.params()
                 for ip, p in enumerate(PROBS):
                     out[i, ip] = gev_quantile(p, mu, sg, xi)
-        i = EXTRA_NAMES.index("trend2")
-        try:
-            f = fit_gev_covariate(X, time_index(T), start=start, vary=("mu", "sigma"))
-            if f.success:
-                mu, sg, xi = f.params()
-                for ip, p in enumerate(PROBS):
-                    out[i, ip] = gev_quantile(p, mu, sg, xi)
-        except (np.linalg.LinAlgError, ValueError, FloatingPointError):
-            pass
-        i = EXTRA_NAMES.index("recent30")
-        Xr = X[-RECENT:]
-        fr = fit_local(Xr, _start(Xr)) if T > RECENT else start
-        if fr.success:
-            for ip, p in enumerate(PROBS):
-                out[i, ip] = fr.quantile(p)
     return rep, out
 
 
 def extra_estimates(res, workers=4, cache_dir=None):
     """X_p paths (N, len(EXTRA_NAMES), n_p, T) of the further MLE estimators for a scenario,
-    cached as extra_<scenario>.npz in cache_dir if given."""
+    cached as extra_<scenario>.npz in cache_dir if given. Only estimators missing from the cache
+    are computed."""
     N = res.stats.shape[0]
-    path = None
+    path, have = None, {}
     if cache_dir is not None:
         ch = res.change
         path = Path(cache_dir) / (f"extra_{res.family}_{ch.knob}_{ch.shape}_{ch.amount:g}_k{res.k}"
                                   f"_T{res.T}_phi{res.phi:.2f}_r{res.r}.npz")
         if path.exists():
             d = np.load(path)
-            if d["q"].shape[0] == N and tuple(d["names"]) == EXTRA_NAMES:
-                return d["q"]
-    jobs = [(res.family, res.change, res.k, res.T, res.phi, res.r, res.seed, i) for i in range(N)]
-    q = np.full((N, len(EXTRA_NAMES), len(PROBS), res.T), np.nan)
-    if workers == 1:
-        parts = map(_extra_job, jobs)
-    else:
-        from . import critical_values as cv
-        ex = ProcessPoolExecutor(max_workers=workers, initializer=cv._single_thread)
-        parts = ex.map(_extra_job, jobs, chunksize=4)
-    for i, o in parts:
-        q[i] = o
-    if workers != 1:
-        ex.shutdown()
-    if path is not None:
+            if d["q"].shape[0] == N:
+                have = {str(n): d["q"][:, i] for i, n in enumerate(d["names"])}
+    todo = tuple(n for n in EXTRA_NAMES if n not in have)
+    if todo:
+        jobs = [(res.family, res.change, res.k, res.T, res.phi, res.r, res.seed, i, todo)
+                for i in range(N)]
+        new = np.full((N, len(todo), len(PROBS), res.T), np.nan)
+        if workers == 1:
+            parts = map(_extra_job, jobs)
+        else:
+            from . import critical_values as cv
+            ex = ProcessPoolExecutor(max_workers=workers, initializer=cv._single_thread)
+            parts = ex.map(_extra_job, jobs, chunksize=4)
+        for i, o in parts:
+            new[i] = o
+        if workers != 1:
+            ex.shutdown()
+        have.update({n: new[:, j] for j, n in enumerate(todo)})
+    q = np.stack([have[n] for n in EXTRA_NAMES], axis=1).astype(float)
+    if path is not None and todo:
         np.savez_compressed(path, q=q.astype(np.float32), names=np.array(EXTRA_NAMES))
     return q
 

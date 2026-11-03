@@ -1,0 +1,539 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+
+\newcommand{\Xp}{X_{0.99}}
+\setlength{\parskip}{0.45em}
+\setlength{\parindent}{0pt}
+
+\title{Detecting and quantifying change in extremes:\\a synthetic-data test of the M\"uller--Watson methods}
+\author{extreme-trend-detection project \\ \small\url{https://github.com/Sustainable-Solutions-Lab/extreme-trend-detection}}
+\date{Draft, 3 November 2026}
+
+\begin{document}
+\maketitle
+
+\section*{Summary}
+
+\paragraph{In brief.}
+\emph{Detection.} The parameter-constancy (Nyblom) test of M\"uller and Watson (2024) is a reliable
+detector of change in annual maxima: with one value per year its false-alarm rate stays at
+4--6\% for every parent distribution, record length and level of day-to-day persistence we tried.
+Its power depends strongly on the record length and on the shape of the daily distribution. A
+mean shift of half a daily standard deviation over the record is detected in 89\% of 85-year
+records from a normal parent but in 24\% from a skewed, precipitation-like (gamma) parent, and in
+41\% and 9\% of 30-year records.
+
+\emph{Quantification.} Saying how large the change is, or what the current 1-in-100-year level
+is, is much harder. Even with no change and the correct model, the 99\% annual-maximum level
+estimated from 85 years understates the true risk at least twofold in 27\% of records (44\% with
+30 years). When extremes are changing, a GEV with a linear trend in location comes close to this
+floor (30\% at 85 years), and no more flexible method, including the authors' Bayesian
+random-walk model, does better on average. When the whole distribution moves with the mean
+state, as expected under warming or moistening, time-trend methods understate current risk in
+57--71\% of 85-year records; a model whose parameters follow a smoothed annual mean does
+markedly better (45\%).
+
+\paragraph{Extended summary.}
+We reimplemented the time-varying-extremes methods of M\"uller and Watson (2024) in Python,
+reproduced their published estimates and test statistics, and tested the methods on synthetic
+data for which the truth is known exactly. Daily series were drawn from four parent
+distributions (normal; gamma, precipitation-like; Student-$t$, heavy-tailed; beta, bounded) with
+day-to-day correlation, and their mean, width or tail was changed over records of 30 to 150 years.
+With one value per year, all the tests we examined keep their nominal 5\% false-alarm rate, except
+that the conventional location-trend likelihood-ratio test is over-sized (7--10\%) for 30-year
+records. Power rises steeply with record length and is much lower for skewed or heavy-tailed
+parents, whose extremes are noisier relative to the daily variability. The Nyblom test is
+less powerful than a location-trend test against the change that test is built for, a
+linear shift in location, and much more powerful against changes in tail shape. Using the three or
+ten largest values per year adds power but, with strong day-to-day persistence, raises false
+alarms to 20--50\% unless the extremes are declustered.
+
+Detecting a change is not the same as measuring it. We scored a dozen estimators on a question
+that matters for risk assessment: if the estimated 99\% annual-maximum level for the most recent
+year is taken at face value, how often is it really exceeded? An ideal estimator gives 1\%. The
+dominant source of error is not the change but the difficulty of estimating a 1-in-100 level from
+a few decades of annual maxima: with no change and a correctly specified model, 27\% of 85-year
+records understate the risk at least twofold and 18\% overstate it at least twofold. Against this
+floor, a linear trend in location is the most reliable simple estimator (30\% understated at
+85 years). The authors' Bayesian random-walk model is competitive for 30- and 45-year records but
+worse for 85-year records (39\%), it shrinks estimated changes toward zero, and its 90\% credible
+intervals, while they cover the truth, are 1.3 to 3 times wider than the actual errors. With three
+values per year its sampler often fails to converge under the authors' prior. When the
+distribution's width and tail move with the mean state, every method that models change as a
+function of time does poorly (57--71\% of 85-year records understate the risk twofold), and a
+covariate model, with GEV location and scale linear in a smoothed annual mean of all daily
+values, does markedly better (45\%). The practical
+conclusion: these methods can establish \emph{that} extremes are changing, and in which direction,
+but statements about the \emph{size} of the current 1-in-100-year level should carry wide
+uncertainty, and the model for the change should follow the physical expectation (for example,
+the local mean state) rather than calendar time.
+
+\setcounter{tocdepth}{1}
+\tableofcontents
+\newpage
+
+%=====================================================================================
+\section{Questions}
+
+M\"uller and Watson (2024) develop inference for extremes when parameters may vary over time:
+likelihood-ratio and Nyblom-type tests with small-sample critical values that depend on the
+estimated tail index, and a Bayesian time-varying GEV model with random walks in its parameters.
+Their simulations calibrate the size of the tests for data drawn exactly from the GEV model. They
+do not report power, do not test the methods on data whose extremes are only approximately GEV
+(the usual situation), say little about serial dependence, and do not check whether the Bayesian
+model recovers known parameter paths. For climate applications these are the questions that
+matter:
+
+\begin{enumerate}
+\item \textbf{Detection.} How often is a change of realistic size detected with record lengths
+  typical of reanalyses and stations (30, 45, 85 and 150 years), and how often is a change
+  ``detected'' when there is none?
+\item \textbf{Quantification.} How well do the methods estimate the current return level, for
+  example the level the annual maximum exceeds with probability 1\% this year ($\Xp$), and its
+  change over the record?
+\item \textbf{Model choice.} Is it better to model change as a function of time (trends, random
+  walks) or of the mean state (a covariate)?
+\end{enumerate}
+
+%=====================================================================================
+\section{Methods}
+
+\subsection{Extremes model and tests}
+
+For each year $t=1,\dots,T$ we keep the $k$ largest daily values
+$X_t^{(1)}\ge\dots\ge X_t^{(k)}$ (with $k=1$, the annual maximum). By extreme-value theory these
+follow approximately the GEV$_k$ distribution with location $\mu$, scale $\sigma$ and shape
+(tail index) $\xi$, with density
+\[
+f(x_1,\dots,x_k)=\sigma^{-k}\exp\!\Big[-(1+\xi z_k)^{-1/\xi}\Big]\prod_{j=1}^{k}(1+\xi z_j)^{-1/\xi-1},
+\qquad z_j=\frac{x_j-\mu}{\sigma}.
+\]
+The tests compared are:
+\begin{itemize}
+\item \textbf{Nyblom} (M\"uller and Watson, eq.~12; Nyblom, 1989): with scores $S_t$ of the
+  constant-parameter fit and average information $V$,
+  $L_T=T^{-2}\sum_t\big(\sum_{l\ge t}S_l\big)'V^{-1}\big(\sum_{l\ge t}S_l\big)$. The test rejects
+  when $L_T\exp(a_0+a_1\hat\xi+a_2\hat\xi^2)>1$, with coefficients calibrated by simulation so that
+  the rejection rate is at most 5\% for every true $\xi$ on a grid (their Appendix~B). We
+  recalibrated the coefficients for each record length and $k$ used here.
+\item \textbf{Location-trend LR}: GEV with $\mu_t=\mu_0+\mu_1 t$, likelihood-ratio test of
+  $\mu_1=0$ against $\chi^2_1$. This is the standard tool in climate science (e.g.\ Coles, 2001).
+\item \textbf{Two halves}: separate GEV fits to the first and second halves of the record, LR
+  test of equal parameters, critical values calibrated like the Nyblom test.
+\item \textbf{Mann--Kendall} rank test for a monotone trend in the annual maxima.
+\end{itemize}
+
+\subsection{Estimators of the 99\% level}
+
+Each estimator gives a path $\hat X_{0.99}(t)$, the level the annual maximum of year $t$ exceeds
+with probability 1\% (the 100-year return level in that year's climate). All are fitted by
+maximum likelihood to the same records, except the Bayesian model.
+\begin{description}
+\item[Constant] GEV with constant parameters (ignores change).
+\item[Last 30 years] constant GEV fitted to the most recent 30 years only, a common practical
+  shortcut (equal to the constant fit for 30-year records).
+\item[Two halves] constant GEV fitted to the second half of the record.
+\item[Location trend] $\mu_t$ linear in time, $\sigma$ and $\xi$ constant.
+\item[Location + width trend] $\mu_t$ and $\log\sigma_t$ linear in time, $\xi$ constant.
+\item[All-parameter trend] $\mu_t$, $\log\sigma_t$ and $\xi_t$ linear in time.
+\item[Mean-state covariate] $\mu_t$ and $\log\sigma_t$ linear in $c_t$, $\xi$ constant, where
+  $c_t$ is a smoothed annual mean of \emph{all} daily values (local-linear smoother, Gaussian
+  kernel, bandwidth 10 years, fixed in advance). This is the usual approach in event attribution,
+  where the covariate is a smoothed (global or local) mean temperature (Philip et al., 2020). A
+  variant with all three parameters linear in the raw annual mean is unstable (the tail index
+  follows the year-to-year noise of the covariate) and is shown only for reference.
+\item[Covariate (true mean)] as above but with the true mean path as covariate: an oracle that
+  shows the cost of estimating the covariate.
+\item[Bayesian] the authors' four-random-walk model (their \texttt{GEV\_4RW\_Model.stan},
+  unchanged likelihood and priors), posterior median of $X_{0.99}(t)$. The parameters follow
+  random walks in a logistic transform of $\xi_t\in(-0.9,2.1)$, in $\ln\alpha_t$, $\ln s_t$ and
+  $m_t$, with $\sigma_t=s_t\alpha_t^{\xi_t}$ and $\mu_t=m_t+(s_t/\xi_t)(\alpha_t^{\xi_t}-1)$.
+  The innovation standard deviations are $\gamma=\mathrm{sg}\cdot g/\sqrt T$ with
+  $g\sim\mathrm{Exp}(1)$ and scale factors $\mathrm{sg}=1,0.5,0.5$ for $\xi,\alpha,s$ (and the
+  scale level for $m$). We use 4 chains of 1,000 warm-up and 1,000 sampling iterations
+  (\texttt{adapt\_delta} 0.95); the authors used 5,000 and 10,000 for single published fits. We
+  also report the posterior mean, and a run with a tighter prior ($\mathrm{sg}=0.25$ for all
+  three).
+\end{description}
+
+\subsection{Synthetic data}
+
+A daily standard Gaussian series $Z_d$ with AR(1) correlation $\phi$ (0.5 unless stated; 0 and
+0.8 also run) is mapped through the parent's quantile function,
+$X_d=m_t+s_t\,\varepsilon(Z_d;\text{tail}_t)$, with $m_t$, $s_t$ and the tail parameter constant
+within a year. The parents are standardized so that the baseline daily standard deviation is 1;
+all levels are in these units. For a daily temperature with a standard deviation of 3--4\,K, a
+change of 0.5 is 1.5--2\,K.
+
+\begin{center}
+\small
+\begin{tabular}{llll}
+\toprule
+Parent & $\varepsilon$ & Tail parameter (baseline) & Tail of the extremes \\
+\midrule
+Normal & $Z$ & --- & light, $\xi\to0$ slowly \\
+Gamma & standardized gamma($a$) & shape $a=2$ & exponential-type, skewed \\
+Student-$t$ & standardized $t_\nu$ & $\nu=6$ & heavy, $\xi=1/\nu$ \\
+Beta & $3(2B-1)$, $B\sim\mathrm{beta}(\alpha,\beta)$ & $\alpha=\beta=4$ & bounded, $\xi=-1/\beta$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Because the map from $Z$ to $X$ is increasing within a year, the annual maximum of $X$ is the map
+applied to the annual maximum of $Z$, so the true $X_{0.99}(t)$ is known exactly: in closed form
+for independent days, and from 500,000 simulated years of $Z$ for correlated days (error about
+0.005 at $p=0.99$).
+
+The changes (Appendix, Table~\ref{tab:cases}) move one feature at a time over the record, along
+a linear, mid-record step or accelerating (exponential) path: the mean, the width ($\log s$), the
+tail parameter (log of $a$, $\nu$ or $\beta$), or, for the beta, the position of the mass within
+fixed bounds. A second set, the \emph{covariate-model cases}, is built so that a mean-state model
+is correct:
+\begin{itemize}
+\item \emph{Temperature-like} (normal, $t$, beta): the mean rises by 0.5 (beta 0.25) along an
+  accelerating path, the width follows it ($\log s_t=0.25\,m_t$) and so does the tail
+  ($\log\text{tail}_t=-0.2\,m_t$).
+\item \emph{Precipitation-like} (gamma): the mean is scaled by $\lambda_t=e^{g_t}$ with a 22\% rise
+  over the record, so every quantile scales with the mean (a Clausius--Clapeyron-type change);
+  in a variant the gamma shape also falls as it gets wetter (heavier tail).
+\end{itemize}
+
+\subsection{Scoring}
+
+For detection we report the rejection rate at the nominal 5\% level with no change (size) and with
+change (power). For quantification, the main score is the \emph{true exceedance probability} of
+each record's estimated level in the last year,
+\[
+\pi=\Pr\big(M_T>\hat X_{0.99}(T)\big),
+\]
+computed from the exact distribution of the last year's annual maximum $M_T$. An ideal estimator
+has $\pi=1\%$. We report its median over records and the shares of records with $\pi>2\%$ (risk
+understated at least twofold) and $\pi<0.5\%$ (overstated at least twofold). This score is
+comparable across parents and penalizes errors by their consequence for risk rather than by their
+size in data units. We also report the error of the estimated change $\hat X_{0.99}(T)-\hat
+X_{0.99}(1)$ and, for the Bayesian model, the coverage and width of its 90\% credible intervals.
+
+\subsection{Monte Carlo design}
+
+Detection results (Stage~B) use 10,000 simulated records with no change and 2,000 per change.
+Quantification results (Stage~C) use 100 records per case, fitted by all estimators. The same
+daily noise is used across cases, record lengths and estimators (common random numbers), so
+comparisons between estimators are paired. A bootstrap over records gives standard errors of 3--4
+percentage points on the pooled shares and about 3 points on differences between estimators.
+
+%=====================================================================================
+\section{Detecting change}
+
+\subsection{False alarms}
+
+With one value per year, all four tests hold their nominal size within Monte Carlo error at every
+record length and persistence level (Figure~\ref{fig:size}), except the location-trend LR test
+for short records (7--10\% at $T=30$), where the $\chi^2$ approximation is poor. Using several
+values per year from a persistent daily series breaks the independence the GEV$_k$ model assumes:
+with the three largest values per year, the Nyblom test rejects 7--9\% at $\phi=0.5$ and 21--23\%
+at $\phi=0.8$, and with ten values 46--51\%. Requiring the values to be at least three days apart
+(declustering) brings the last case down to 9--12\%. Mann--Kendall uses only the annual maxima
+and is unaffected.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig05_size.pdf}
+\caption{False-rejection rate of the four tests with no change, by design ($k$ values per year,
+day-to-day correlation $\phi$, record length $T$). Dots: mean over the four parents; lines: range.
+Vertical line: nominal 5\%.}
+\label{fig:size}
+\end{figure}
+
+\subsection{Power}
+
+Power rises steeply with record length (Figure~\ref{fig:power}, Table~\ref{tab:power}). For a
+normal parent, a mean shift of 0.5 daily standard deviations over the record is detected by the
+Nyblom test in 41\%, 60\%, 89\% and 99\% of records of 30, 45, 85 and 150 years. The same shift is
+much harder to detect for skewed or heavy-tailed parents (gamma: 9--41\%; $t$: 11--52\%), whose
+annual maxima are more variable relative to the daily standard deviation. The location-trend LR
+test is more powerful against the change it is designed for, a linear shift in location (63\% at
+30 years and 96\% at 85 years for the normal mean shift, though part of the edge at 30 years
+comes from its over-sizing). The Nyblom test is much more powerful against a change in tail shape
+($t$ parent: 69\% vs 36\% at 85 years). The two tests are complementary rather than competing.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig04_power.pdf}
+\caption{Rejection rate (nominal 5\% level) against the size of the true change in $\Xp$, for
+linear changes in mean, width and tail, one value per year, $\phi=0.5$. Colour: record length.
+Solid: Nyblom; dashed: location-trend LR.}
+\label{fig:power}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\small
+\input{tables/power.tex}
+\caption{Power (nominal 5\% level) of the Nyblom (Nyb.) and location-trend LR tests for selected
+linear changes, one value per year, $\phi=0.5$. $\Delta X_{0.99}$: true change in the 99\% level
+over the record (baseline daily sd). Last row: size with no change, mean over parents.}
+\label{tab:power}
+\end{table}
+
+%=====================================================================================
+\section{Quantifying change}
+
+\subsection{What the estimates look like}
+
+Figure~\ref{fig:examples} shows single 85-year records with the estimated and true paths of
+$\Xp$. The records were chosen by a fixed rule, as the record of median difficulty (ranking records
+by the average over the estimators of $|\log(\pi/1\%)|$), so they are typical rather than best or
+worst cases. Figure~\ref{fig:spread} shows the spread of the estimated paths over all 100
+records for three cases, and Figure~\ref{fig:length} the effect of record length.
+
+Three features stand out. First, the estimates scatter widely about the truth: for a normal parent with 85 years and a
+mean shift of 0.5, the 5--95\% range of the error of the last year's $\Xp$ spans 0.7 daily
+standard deviations for the location trend and about 1.0 for the more flexible estimators,
+larger than the change being estimated. Second, a model with the wrong
+form for the change is biased in a predictable way: the constant fit is flat, and the location
+trend, a straight line, misses the late acceleration in the covariate-model cases. Third, the
+Bayesian posterior median follows the truth on average but with paths that are too flat toward
+the end of the record, and with 30 years its credible band is very wide upward.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig01_examples.pdf}
+\caption{Four typical 85-year records (points: annual maxima) with the true 99\% level
+(black) and five estimates. Shaded: Bayesian 90\% credible interval. Units: baseline daily
+standard deviation.}
+\label{fig:examples}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig02_spread.pdf}
+\caption{Spread of the estimated 99\% level over 100 records of 85 years (median, 25--75\% and
+5--95\% of the estimates in each year) for a linear mean shift (top) and two covariate-model cases
+(middle, bottom), with the truth in black.}
+\label{fig:spread}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig03_record_length.pdf}
+\caption{Effect of record length: the location-trend (blue) and Bayesian (orange) estimates for
+30, 45 and 85 years. The total change over the record is the same in each column, so the change
+per year is larger for shorter records.}
+\label{fig:length}
+\end{figure}
+
+\subsection{The noise floor}
+
+Much of the error has nothing to do with change. With no change and the correctly specified
+constant model, the estimated $\Xp$ understates the risk at least twofold in 27\% of 85-year
+records and overstates it at least twofold in 18\%; for 30-year records the shares are 44\% and
+27\%, and for 45-year records 38\% and 30\%. The median exceedance probability is 1.3\% rather than
+1\%: the sampling distribution of an estimated high quantile is skewed, so the typical estimate
+is a little low. This floor is the yardstick for the results below. An estimator that allows for
+change cannot beat it on average, and it pays for its flexibility with extra variance when the
+change is small.
+
+\subsection{Accuracy of the current 99\% level}
+
+Figures~\ref{fig:exceedance} and \ref{fig:heatmap} and Table~\ref{tab:headline} pool the results
+over the standard cases (20 cases including the four with no change) and the covariate-model cases
+(7 cases).
+
+\begin{itemize}
+\item \textbf{The location trend is the most reliable simple choice} for the standard cases: at
+  85 years it understates the risk twofold in 30\% of records, close to the 27\% floor. Ignoring
+  change (constant, 46\%) or using only the last 30 years (49\%) is much worse.
+\item \textbf{More flexible time trends do not help on average.} Adding a width trend gives 33\%
+  and trends in all three parameters 42\%; the gain where the width or tail really changes is
+  outweighed by the extra variance elsewhere.
+\item \textbf{The Bayesian model is competitive for short records but not for long ones}: 36\% at
+  30 years (against 40\% for the location trend), 34\% at 45 years, but 39\% at 85 years, which is
+  $10\pm3$ points worse than the location trend. Its posterior mean is a poor point estimate: the
+  posterior of a high quantile is right-skewed, so the mean overstates the level (median
+  exceedance 0.5\% at 85 years).
+\item \textbf{Three values per year help modestly} (location trend 28\% at 85 years, Bayesian
+  31\%), when declustered.
+\item \textbf{Record length matters more than the method.} Every estimator is worse at 30 years
+  than at 85, and the spread between the best and worst sensible methods (about 10 points) is
+  smaller than the floor itself.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig06_exceedance.pdf}
+\caption{Distribution over records of the true probability that the estimated 99\% level is
+exceeded in the last year (circle: median; bar: 25--75\%; line: 5--95\%). Shaded band: within a
+factor 2 of the ideal 1\%.}
+\label{fig:exceedance}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig07_heatmap.pdf}
+\caption{Share of records in which the estimated 99\% level understates (left) or overstates
+(right) the true risk at least twofold, pooled over cases, by design. Columns marked * are the
+covariate-model cases.}
+\label{fig:heatmap}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\input{tables/headline.tex}
+\caption{Accuracy of the estimated 99\% level in the last year: median true exceedance
+probability (\%, ideal 1) and shares of records (\%) with the risk understated ($>2\%$) or
+overstated ($<0.5\%$) at least twofold.}
+\label{tab:headline}
+\end{table}
+
+\subsection{Estimating the size of the change}
+
+Figure~\ref{fig:change} shows the estimated change in $\Xp$ from the first year to the last for
+every case. The location trend is precise but estimates only the part of the change that is a
+shift in location: it captures between a third and four-fifths of a width change (depending on the
+parent) and a third or less of a tail change in the gamma and $t$ parents. The location + width
+trend and the covariate model are roughly unbiased where their form is right, but their 10--90\%
+ranges are as wide as the change itself. The Bayesian model systematically shrinks the change
+toward zero, most visibly for the large tail change in the $t$ parent and for the
+precipitation-like cases. For a normal parent with 85 years and a true change of 0.5, the
+location trend's 10--90\% range is 0.33--0.65. The location + width trend and the covariate model
+span about 0 to 0.9, so even the sign is wrong in about one record in ten. The Bayesian median
+change is 0.32, against the true 0.5.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig08_change.pdf}
+\caption{Estimated change in the 99\% level over 85-year records (median and 10--90\% over
+records) against the truth (black bar), for every case.}
+\label{fig:change}
+\end{figure}
+
+\subsection{When the distribution moves with the mean state}
+
+In the covariate-model cases the width and tail of the daily distribution change with the mean, and
+the mean itself rises along an accelerating path. All methods that model change as a function of
+time do poorly: at 85 years the location trend understates the current risk twofold in 71\% of
+records, the location + width trend in 60\%, and the Bayesian model in 57\%. The covariate model
+does markedly better (45\%), close to its oracle version with the true mean path (43\%). Two
+things contribute: the covariate captures the acceleration, which a straight line in time
+cannot, and it is estimated from all daily values, not only the extremes, so it is much less
+noisy than the extremes themselves. Letting the tail index also depend on the covariate makes
+things worse (57\%), because the tail index then follows the noise in the covariate.
+
+%=====================================================================================
+\section{The Bayesian random-walk model}
+
+\paragraph{Credible intervals.}
+The 90\% intervals for the last year's $\Xp$ contain the truth in 93--100\% of records, so they
+are conservative (Figure~\ref{fig:bayes}). Their median width is 1.3 to 3 times the 5--95\% range
+of the actual errors of the posterior median. The intervals are honest but too wide to be
+informative for short records.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig09_bayes_intervals.pdf}
+\caption{Bayesian model. Left: coverage of the nominal 90\% interval for the last year's 99\%
+level. Right: median interval width relative to the 5--95\% range of the actual errors (1 = right
+width). One dot per parent; standard cases.}
+\label{fig:bayes}
+\end{figure}
+
+\paragraph{Convergence.}
+Under the authors' prior most fits have some divergent transitions (median 9 of 4,000 at
+85 years and 80 at 30 years). With one value per year, R-hat exceeds 1.05 in fewer than 1\% of
+fits. With three values per year it exceeds 1.05 in 10--12\% of fits, almost always far above
+(R-hat $>1.5$, chains in different modes), and these are concentrated in the bounded beta parent
+(25--32\% of its fits). Our chains are shorter than the authors', but disagreement between chains
+of this size is not a matter of chain length. The unconverged fits overstate the risk more often than the converged ones (37--49\% against
+19--32\% overstated twofold), but they are a minority, and excluding them changes the pooled shares
+by at most 2 points.
+
+\paragraph{Prior sensitivity.}
+Shrinking the random-walk scales for $\xi$, $\alpha$ and $s$ to 0.25 nearly eliminates the
+convergence problems (R-hat $\le1.05$ in every fit, median 1--6 divergences). It improves accuracy
+slightly at 85 years (35\% against 39\% understated) and leaves 45 years unchanged (34\%), and it
+brings interval coverage closer to nominal (93--98\%). See Appendix Figure~\ref{fig:prior}.
+
+\paragraph{Time reversal.}
+The model's prior is symmetric in time, so fitting a record in reverse order should give the
+reversed posterior paths. For four test cases the largest difference between the forward and
+reversed posterior medians of $\Xp$ was 0.003--0.11, at most 1\% of the width of the 90\%
+interval, consistent with MCMC noise.
+
+%=====================================================================================
+\section{Limitations}
+
+\begin{itemize}
+\item The synthetic data have no seasonal cycle, a single AR(1) dependence structure, and changes
+  that are smooth or a single step. Real daily data have seasonality, longer memory and
+  clustering of extremes, which would mostly make things harder.
+\item The covariate-model cases are, by construction, cases where that model is right, and the
+  covariate is the local mean of the same series. With an external covariate (e.g.\ global mean
+  temperature) the gain would depend on how closely the local extremes follow it.
+\item 100 records per case gives standard errors of 3--4 percentage points on the pooled shares;
+  differences between estimators of less than about 5 points should not be over-interpreted.
+\item Our MCMC runs are shorter than the authors' (4 $\times$ 1,000 against 4 $\times$ 10,000
+  draws). The accuracy of point estimates and interval coverage should be robust to this; the
+  convergence failures with three values per year are not a matter of chain length.
+\item We have not yet run the paper's joint $L^*$ test, the exceedance (threshold) versions of
+  the tests, or the Bayes factors that compare ``more events'' with ``a shifted distribution''.
+\end{itemize}
+
+\section{Next steps}
+
+\begin{enumerate}
+\item Apply the tests and the location-trend, covariate and Bayesian estimators to ERA5 (85
+  years) at selected grid cells or regions, with declustered values, and compare with the
+  synthetic-data error rates reported here.
+\item Add seasonality to the synthetic data, and an external covariate (global mean
+  temperature) to the covariate model.
+\item Report uncertainty for the current return level from the MLE estimators (profile likelihood
+  or bootstrap) and check its coverage as we did for the Bayesian intervals.
+\end{enumerate}
+
+%=====================================================================================
+\appendix
+\section{Cases and supplementary results}
+
+\begin{table}[H]
+\centering
+\small
+\input{tables/cases.tex}
+\caption{Stage C cases. $\Delta X_{0.99}$: true change in the 99\% level over an 85-year record
+(baseline daily sd). ``log(shape)'' is the log of the gamma shape $a$, the $t$ degrees of freedom
+$\nu$, or the beta $\beta$; increasing it lightens the tail of the gamma and $t$.}
+\label{tab:cases}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/figA1_prior_phi.pdf}
+\caption{Left: Bayesian model with the authors' prior and with a tighter prior on the random-walk
+scales. Right: shares of 85-year records with the risk understated twofold with correlated
+($\phi=0.5$) and independent daily values.}
+\label{fig:prior}
+\end{figure}
+
+\section*{References}
+\begin{list}{}{\leftmargin=1.5em \itemindent=-1.5em \itemsep=0.2em}
+\item Carpenter, B., et al. (2017). Stan: a probabilistic programming language. \emph{Journal of
+  Statistical Software} 76(1).
+\item Coles, S. (2001). \emph{An Introduction to Statistical Modeling of Extreme Values}. Springer.
+\item M\"uller, U. K. and M. W. Watson (2024). Time varying extremes. \emph{Review of Economics and
+  Statistics}, doi:10.1162/rest\_a\_01528.
+\item Nyblom, J. (1989). Testing for the constancy of parameters over time. \emph{Journal of the
+  American Statistical Association} 84, 223--230.
+\item Philip, S., et al. (2020). A protocol for probabilistic extreme event attribution analyses.
+  \emph{Advances in Statistical Climatology, Meteorology and Oceanography} 6, 177--203.
+\end{list}
+
+\end{document}

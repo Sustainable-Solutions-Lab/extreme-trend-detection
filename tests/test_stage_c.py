@@ -66,3 +66,22 @@ def test_mle_paths_match_stage_b_endpoints():
     assert q[1, 2, 0] == pytest.approx(gev_quantile(0.99, S["trend_mu0"] - S["mu1_hat"] / 2,
                                                     S["trend_sigma"], S["trend_xi"]))
     assert np.all(q[0, 2] == q[0, 2, 0])                               # constant fit is flat
+
+
+def test_smoother_exact_on_linear_and_reduces_noise():
+    t = np.arange(60.0)
+    line = 1.5 - 0.02 * t
+    assert np.allclose(stage_c.smooth_local_linear(line), line)
+    noise = np.random.default_rng(0).standard_normal(60)
+    assert stage_c.smooth_local_linear(noise).std() < 0.5 * noise.std()
+
+
+def test_extra_estimators_by_name():
+    ch = pa.Change("mean", "linear", 0.5)
+    names = stage_c.EXTRA_NAMES
+    _, all_ = stage_c._extra_job(("normal", ch, 1, 40, 0.5, 0, 1, 0, names))
+    _, two = stage_c._extra_job(("normal", ch, 1, 40, 0.5, 0, 1, 0, ("cov2", "recent30")))
+    assert np.allclose(two[0], all_[names.index("cov2")], equal_nan=True)
+    assert np.allclose(two[1], all_[names.index("recent30")], equal_nan=True)
+    assert np.all(np.isfinite(all_))
+    assert np.ptp(all_[names.index("recent30")], axis=1).max() == 0     # flat path
