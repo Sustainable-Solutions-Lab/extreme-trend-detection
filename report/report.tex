@@ -63,61 +63,6 @@ which is right is usually unknown, the record rarely shows it, and the wrong cho
 when the mean changes nonlinearly or the spread changes without the mean. Averaging the candidate
 models, weighted by how well each fits, comes close to the best single model whatever the truth.
 
-\section*{Summary}
-
-We reimplemented the time-varying-extremes methods of M\"uller and Watson (2024) in Python,
-reproduced their published estimates and test statistics, and tested the methods on synthetic
-data for which the truth is known exactly. Daily series were drawn from four parent
-distributions (normal; gamma, precipitation-like; Student-$t$, heavy-tailed; beta, bounded) with
-day-to-day correlation, and their mean, width or tail was changed over records of 30 to 150 years.
-With one value per year, all the tests we examined keep their nominal 5\% false-alarm rate, except
-that the conventional location-trend likelihood-ratio test is over-sized (7--10\%) for 30-year
-records. Power rises steeply with record length and is much lower for skewed or heavy-tailed
-parents, whose extremes are noisier relative to the daily variability. With one value per year
-the Nyblom test is not the most powerful: the simpler Mann--Kendall rank test detects the simulated
-changes about as often or more often in almost every case, and a location-trend test is more
-powerful against shifts in location but much less powerful against changes in tail shape. The
-Nyblom test gains from using the three or ten largest values per year, which Mann--Kendall cannot
-use, but with strong day-to-day persistence these raise false alarms to 20--50\% unless the
-extremes are declustered.
-
-Detecting a change is not the same as measuring it. We scored more than a dozen estimators on a
-question that matters for risk assessment: if the estimated 99\% annual-maximum level for the most
-recent year is taken at face value, what is the true probability that it is exceeded? An ideal
-estimator gives 1\%. We count an estimate as a miss when that probability is more than 2\% (risk
-understated at least twofold) or less than 0.5\% (overstated at least twofold), and report the two
-directions separately, because their consequences differ and estimators trade one for the other.
-The dominant source of error is not the change but the difficulty of estimating a 1-in-100 level
-from a few decades of annual maxima: with no change and a correctly specified model, 44\% of
-85-year records miss (27\% understate, 18\% overstate). Against this floor, a linear trend in
-location or in location and width misses 56\%, and an AIC-weighted average of constant, trend and
-mean-state models does best (51\%). The authors' Bayesian random-walk model misses 59\%, erring more
-often toward understatement; it shrinks estimated changes toward zero, and its 90\% credible
-intervals, while they cover the truth, are 1.3 to 3 times wider than the actual errors. With 30 or
-45 years all these methods are within a few points of each other and of the no-change floor (about
-70\%). With three values per year, 10--12\% of the Bayesian fits fail to converge under the
-authors' prior.
-
-Which model is right depends on the physical process, and our tests show what happens when the
-model is wrong. We compared models of the same complexity that differ only in their driving
-variable: GEV location and scale linear in time, or linear in a smoothed annual mean of all daily
-values. When the distribution's width and tail follow an accelerating mean state, the time-trend
-models miss the current risk by more than a factor of 2 in 75--83\% of 85-year records against 65\%
-for the mean-state model. When the width changes while the mean stays constant, the mean-state model
-sees nothing and misses 69\% against 55\%. When the mean moves linearly in time the two coincide, and
-with 30 years every model misses 66--87\% of records, so the choice of driving variable is
-secondary to record length. Fitting a change that is not there costs about as much: with no
-change, the location + width and covariate models miss 55--60\% against 44\% for a constant fit.
-When the mean rises at an increasing rate but the width and tail change linearly in time,
-the mean-state model, now with the wrong driver, still does slightly better (64\% against 68\%),
-because missing the curvature of the mean costs more than misplacing the width. The data rarely
-reveal the driver: AIC cannot tell a width change from a mean change. But an AIC-weighted average of
-the constant, time-trend and mean-state models comes within 4 points of the best single model for
-every true process at 85 years. The practical conclusion: these methods can establish \emph{that}
-extremes are changing, and in which direction, but statements about the \emph{size} of the current
-1-in-100-year level should carry wide uncertainty, including the spread between physically plausible
-models of the change, and are best based on an average over those models rather than on one of them.
-
 \setcounter{tocdepth}{1}
 \tableofcontents
 \newpage
@@ -974,6 +919,76 @@ interval, consistent with MCMC noise.
 \item We have not yet run the paper's joint $L^*$ test, the exceedance (threshold) versions of
   the tests, or the Bayes factors that compare ``more events'' with ``a shifted distribution''.
 \end{itemize}
+
+%=====================================================================================
+\section{Summary}\label{sec:summary}
+
+\emph{What we did.} We reimplemented the time-varying-extremes methods of M\"uller and Watson (2024)
+in Python, reproduced their published estimates and test statistics, and tested the methods on
+synthetic data for which the truth is known exactly. Daily series were drawn from four parent
+distributions (normal; gamma, precipitation-like; Student-$t$, heavy-tailed; beta, bounded) with
+day-to-day correlation, and their mean, width or tail was changed over records of 30 to 150 years.
+
+\emph{False alarms.} With one value per year, all the tests we examined keep their nominal 5\%
+false-alarm rate, except that the conventional location-trend likelihood-ratio test is over-sized
+(7--10\%) for 30-year records. Using the three or ten largest values per year from a persistent
+daily series raises false alarms to 20--50\% unless the extremes are declustered.
+
+\emph{Power.} Power rises steeply with record length and is much lower for skewed or heavy-tailed
+parents, whose extremes are noisier relative to the daily variability. With one value per year the
+Nyblom test is not the most powerful: the simpler Mann--Kendall rank test detects the simulated
+changes about as often or more often in almost every case, and a location-trend test is more
+powerful against shifts in location but much less powerful against changes in tail shape. The
+Nyblom test gains from using the three or ten largest values per year, which Mann--Kendall cannot
+use, provided they are declustered.
+
+\emph{How we scored the estimates.} Detecting a change is not the same as measuring it. We scored
+more than a dozen estimators on a question that matters for risk assessment: if the estimated 99\%
+annual-maximum level for the most recent year is taken at face value, what is the true probability
+that it is exceeded? An ideal estimator gives 1\%. We count an estimate as a miss when that
+probability is more than 2\% (risk understated at least twofold) or less than 0.5\% (overstated at
+least twofold), and report the two directions separately, because their consequences differ and
+estimators trade one for the other.
+
+\emph{The noise floor.} The dominant source of error is not the change but the difficulty of
+estimating a 1-in-100 level from a few decades of annual maxima: with no change and a correctly
+specified model, 44\% of 85-year records miss (27\% understate, 18\% overstate), and about 70\% of
+30- and 45-year records.
+
+\emph{Which estimators do best.} Against this floor, a linear trend in location or in location and
+width misses 56\% of 85-year records, and an AIC-weighted average of constant, trend and mean-state
+models does best (51\%). With 30 or 45 years all these methods are within a few points of each other
+and of the no-change floor.
+
+\emph{The Bayesian model.} The authors' Bayesian random-walk model misses 59\% of 85-year records,
+erring more often toward understatement. It shrinks estimated changes toward zero, and its 90\%
+credible intervals, while they cover the truth, are 1.3 to 3 times wider than the actual errors.
+With three values per year, 10--12\% of its fits fail to converge under the authors' prior.
+
+\emph{Using the wrong driving variable.} Which model is right depends on the physical process, and
+our tests show what happens when the model is wrong. We compared models of the same complexity that
+differ only in their driving variable: GEV location and scale linear in time, or linear in a
+smoothed annual mean of all daily values. When the distribution's width and tail follow an
+accelerating mean state, the time-trend models miss the current risk by more than a factor of 2 in
+75--83\% of 85-year records against 65\% for the mean-state model. When the width changes while the
+mean stays constant, the mean-state model sees nothing and misses 69\% against 55\%. Fitting a
+change that is not there costs about as much: with no change, the location + width and covariate
+models miss 55--60\% against 44\% for a constant fit.
+
+\emph{Where the choice matters less.} When the mean moves linearly in time the two kinds of model
+coincide. When the mean rises at an increasing rate but the width and tail change linearly in time,
+the mean-state model, now with the wrong driver, still does slightly better (64\% against 68\%),
+because missing the curvature of the mean costs more than misplacing the width. With 30 years every
+model misses 66--87\% of records, so the choice of driving variable is secondary to record length.
+
+\emph{When the driver is unknown.} The data rarely reveal the driver: AIC cannot tell a width change
+from a mean change. But an AIC-weighted average of the constant, time-trend and mean-state models
+comes within 4 points of the best single model for every true process at 85 years.
+
+\emph{Practical conclusion.} These methods can establish \emph{that} extremes are changing, and in
+which direction. Statements about the \emph{size} of the current 1-in-100-year level should carry
+wide uncertainty, including the spread between physically plausible models of the change, and are
+best based on an average over those models rather than on one of them.
 
 %=====================================================================================
 \appendix
