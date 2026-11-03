@@ -9,6 +9,10 @@ starting point is a Python replication of
 We will then test these methods on pseudo-data with known properties, and apply them to ERA5
 climate variables.
 
+**Report:** [`report/report.pdf`](report/report.pdf) (source `report/report.tex`, figures and
+tables built by `scripts/make_figures.py`) summarizes the pseudo-data results: how well change is
+detected, and how well the current 99% annual-maximum level and its change are estimated.
+
 ## The method in brief
 
 For each period t = 1, …, T we keep either the **k largest observations** or **all exceedances of
@@ -24,7 +28,7 @@ nor the number of periods needs to be large.
 | §2.2.2, App. B | ξ̂-dependent critical values `cv(ξ̂) = exp(−a₀−a₁ξ̂−a₂ξ̂²)` | done for k largest: `critical_values.py`, `scripts/calibrate_cv.py` |
 | §2.4, App. B.2 | Bonferroni critical values for exceedances | to do |
 | §3.1, eq. (12)–(13) | Nyblom test of parameter constancy, and the joint L* test | L_T done (`nyblom.py`, reproduces Table 2); L* to do |
-| §3.2, eq. (14)–(15) | Bayesian TVP-GEV: random walks in (ξ, α, s, m), fitted by HMC in Stan | to do (parameter map and extended-support likelihood done) |
+| §3.2, eq. (14)–(15) | Bayesian TVP-GEV: random walks in (ξ, α, s, m), fitted by HMC in Stan | done: `stan/gev_4rw.stan` (authors' model, leaner output), `stage_c.py` |
 | §3.2.4 | Bayes factors via Meng & Wong's simple identity | to do |
 
 In the time-varying model, α is the effective sample size (how many events occur). The parameters
@@ -50,11 +54,19 @@ tvextremes/
                   Student-t, beta; tanh-normal available but not run), k largest per year
                   with declustering, exact truth for annual-maximum quantiles
   stage_b.py      Stage B: simulate a configuration, size/power and return-level accuracy
+  stage_c.py      Stage C: Bayesian TVP fits (cmdstanpy) and MLE estimators (constant, trends,
+                  covariate models) of the X_p paths, scored against the exact truth
+stan/
+  gev_4rw.stan    the authors' four-random-walk GEV model (same density; leaner output)
 scripts/
   calibrate_cv.py      run a calibration for given (k, T) and store it in data/calibration
   import_mw2024_cvs.py copy the authors' coefficients into data/calibration
   power_study.py       run the Stage A power study and write data/results/power_summary.csv
   stage_b.py           run Stage B and write data/results/stage_b_*.csv
+  stage_c.py           run Stage C and write data/results/stage_c_summary.csv
+  stage_c_reversal.py  time-reversal check of the Bayesian model
+  make_figures.py      report figures and tables, data/results/stage_c_headline.csv
+report/                report.tex, report.pdf, figures/, tables/ (LaTeX; build with latexmk -pdf)
 tests/
   test_likelihood.py       self-contained checks (scipy cross-checks, normalization, scores, simulation)
   test_critical_values.py  calibration machinery
@@ -268,6 +280,32 @@ data:
 - How robust are the results when daily values are autocorrelated (persistent heatwaves, multi-day
   storms) and the parent distribution is not GP-like?
 
+## Stage C: how well is the 99% level predicted?
+
+Each estimator is fitted to the same simulated records (Stage B generator; 100 records per case)
+and scored on the *true* probability that its estimated 99% annual-maximum level for the last
+year is exceeded (ideal 1%). Pooled results are in `data/results/stage_c_headline.csv`, per-case
+results in `data/results/stage_c_summary.csv`, and the full write-up in the report. Main
+findings, for 85-year records with one value per year unless stated:
+
+- **A noise floor dominates.** With no change and the correct constant model, the estimated
+  level understates the risk at least twofold in 27% of records (44% for 30 years) and overstates
+  it twofold in 18%.
+- **The location trend is the most reliable simple estimator**: 30% of records understated
+  twofold over the standard cases, against 46% for a constant fit, 49% for a fit to the last 30
+  years, 33% for a location + width trend and 42% for trends in all three parameters.
+- **The authors' Bayesian model** (posterior median) is competitive for 30–45 years (34–36%) but
+  worse for 85 years (39%). It shrinks estimated changes toward zero. Its 90% intervals cover
+  the truth 93–100% of the time, but are 1.3–3 times wider than the actual errors. With three
+  values per year, 10–12% of fits do not converge (R-hat > 1.5, mostly the bounded beta parent);
+  a tighter prior on the random-walk scales removes this.
+- **When width and tail move with the mean state** (covariate-model cases), the time-trend
+  methods understate the risk in 57–71% of records. A GEV with location and log scale linear in
+  a smoothed annual mean of all days (`cov2`, constant ξ) gets 45%, close to its oracle with the
+  true mean (43%). Letting ξ depend on the raw annual mean (`cov3`) is unstable.
+- The Bayesian model passes a time-reversal check (forward and reversed posterior paths agree to
+  within 1% of the interval width).
+
 ## Roadmap
 
 1. ~~Critical-value calibration in Python (Appendix B)~~ done for k largest; exceedance
@@ -285,24 +323,24 @@ data:
    - Stage B is done (results in `data/results/stage_b_*.csv`). With one value per year all
      tests hold their 5% size at any persistence; several values per year from a persistent
      daily series inflate false alarms badly unless the extremes are declustered.
-4. Stage C (running): how well is the 99% level predicted? The authors' Bayesian model with four
-   random walks (Stan, via cmdstanpy) and the MLE estimators are fitted to the same Stage B
-   records and scored on the true exceedance probability of the estimated level in the most
-   recent year, level errors and credible-interval coverage; 30, 45 and 85 years, one or three
-   values per year. Importance reweighting and Bayes factors are not yet done.
-5. Alternative models for the change in return levels (see below).
+4. ~~Stage C~~ done (see above and the report): 30, 45 and 85 years, one or three values per
+   year, correlated and independent days, the authors' prior and a tighter one. Importance
+   reweighting and Bayes factors are not yet done.
+5. Alternative models for the change in return levels (see below): implemented as Stage C
+   estimators; an external covariate (global mean temperature) is still to do.
 6. ERA5: build k-largest or exceedance panels per grid cell or region, decluster to handle serial
    dependence, then run the tests and the estimators.
 
-### Alternative models for the change (planned)
+### Alternative models for the change
 
 The Bayesian model lets every parameter wander as a random walk, which asks a lot of a few
 decades of extremes. Two more constrained models are probably closer to what the data can
 support:
 
 1. **Linear trends in all three GEV parameters.** μ_t, log σ_t and ξ_t each linear in time. This
-   extends the location-only trend fit, which misses changes in width and tail. Being in progress
-   as a further Stage C estimator (`trend3`), scored on the same records.
+   extends the location-only trend fit, which misses changes in width and tail. Implemented as
+   `trend3`, with `trend2` (ξ constant). Neither beats the location-only trend on average: the
+   gain where the width or tail really changes is outweighed by the extra variance elsewhere.
 2. **Parameters as monotone functions of the mean state (covariate model).** The GEV parameters
    depend on a covariate c_t, e.g. μ_t = a_μ + b_μ c_t, log σ_t = a_σ + b_σ c_t,
    ξ_t = a_ξ + b_ξ c_t, where c_t is a smoothed estimate of the local mean (or a global-mean
@@ -318,3 +356,9 @@ support:
    carries much more information than the extremes alone. Each case should also be fitted with
    the time-trend and Bayesian models, to see how much is lost when the change is not linear
    in time.
+
+   Implemented: the test cases are the `warm_coupled`, `precip_scaling` and `precip_shape` knobs
+   in `parents.py` (`scripts/stage_c.py --coupled`), and the estimators are `cov2` (μ and log σ
+   linear in a local-linear smooth, 10-year bandwidth, of the annual mean; ξ constant),
+   `cov3` (all three linear in the raw annual mean; unstable) and their oracles with the true mean
+   path. `cov2` is the best estimator in these cases (results above).

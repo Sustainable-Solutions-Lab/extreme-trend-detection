@@ -188,6 +188,12 @@ especially in the most recent year.
 - `const`: constant-parameter GEV (ignores change).
 - `trend`: GEV with a linear trend in location.
 - `split`: separate GEV fits to the two halves.
+- Added after the first run (`tvextremes.stage_c.EXTRA_NAMES`, MLE, computed by regenerating the
+  records from their seeds): `trend2` (µ and log σ linear in time), `trend3` (µ, log σ and ξ linear
+  in time), `recent30` (constant fit to the last 30 years), `cov2` (µ and log σ linear in a
+  local-linear smooth of the annual mean of all days, 10-year Gaussian bandwidth, ξ constant),
+  `cov3` (all three linear in the raw annual mean; unstable), and the oracles `cov2_true` and
+  `cov3_true` with the true mean path as covariate.
 - `tvp_mean`, `tvp_median`: posterior mean and median of X_p(t) from the authors' Bayesian model
   with four random walks (`stan/gev_4rw.stan`, their `GEV_4RW_Model.stan` with leaner output;
   `tests/test_stage_c.py` checks the log density is identical). Their prior settings: ξ in
