@@ -10,7 +10,6 @@
 \usepackage[hidelinks]{hyperref}
 
 \newcommand{\Xp}{X_{0.99}}
-\newcommand{\PENDING}[1]{\textcolor{red}{[#1]}}
 \setlength{\parskip}{0.45em}
 \setlength{\parindent}{0pt}
 
@@ -41,12 +40,16 @@ random-walk model, does better on average.
 
 \emph{Using the wrong model.} There is no single best model for the change. Whether to model it as a
 function of time or of the mean state depends on which actually drives it, and that is usually
-unknown. With 85 years, using the wrong driving variable raises the share of records in which the
-current 99\% level misses the true risk by more than a factor of 2 by 10--20 percentage points. A
-mean-state model cannot see a change that does not move the mean, and a time trend cannot follow an
-accelerating mean state. Fitting a change that is not there costs about as much. With 30 years,
-sampling noise dominates and the choice matters little. \PENDING{whether letting the data choose (AIC)
-recovers most of the loss}
+unknown. With 85 years, the wrong driving variable can raise the share of records in which the
+current 99\% level misses the true risk by more than a factor of 2 by 10--20 percentage points: a
+mean-state model cannot see a change that does not move the mean, and a linear time trend cannot
+follow an accelerating mean state. When the mean accelerates, following its path matters more than
+getting right what drives the width, so the mean-state model loses little even when the width in
+fact changes on its own time course. Fitting a change that is not there costs about as much
+(11--16 points for the location + width and covariate models). Averaging the candidate models with Akaike weights is a robust way out: at 85 years the
+average is never more than 4 points worse than the best single model for the true process, while
+each single model is 11--30 points worse for some process. With 30 years, sampling noise dominates
+and no choice of model helps much.
 
 \paragraph{Extended summary.}
 We reimplemented the time-varying-extremes methods of M\"uller and Watson (2024) in Python,
@@ -83,10 +86,15 @@ models miss the current risk by more than a factor of 2 in 75--83\% of 85-year r
 for the mean-state model. When the width changes while the mean stays constant, the mean-state model
 sees nothing and misses 69\% against 55\%. When the mean moves linearly in time the two coincide, and
 with 30 years every model misses 66--87\% of records, so the choice of driving variable is
-secondary to record length. \PENDING{time-driven warming; AIC selection and averaging} The practical
-conclusion: these methods can establish \emph{that} extremes are changing, and in which direction,
-but statements about the \emph{size} of the current 1-in-100-year level should carry wide
-uncertainty, including the spread between physically plausible models of the change.
+secondary to record length. When the mean accelerates but the width and tail change linearly in time,
+the mean-state model, now with the wrong driver, still does slightly better (64\% against 68\%),
+because missing the curvature of the mean costs more than misplacing the width. The data rarely
+reveal the driver: AIC cannot tell a width change from a mean change. But an AIC-weighted average of
+the constant, time-trend and mean-state models comes within 4 points of the best single model for
+every true process at 85 years. The practical conclusion: these methods can establish \emph{that}
+extremes are changing, and in which direction, but statements about the \emph{size} of the current
+1-in-100-year level should carry wide uncertainty, including the spread between physically plausible
+models of the change, and are best based on an average over those models rather than on one of them.
 
 \setcounter{tocdepth}{1}
 \tableofcontents
@@ -546,7 +554,7 @@ Bold: the model's form contains the true process (approximately); $\times$: it d
 \begin{table}[H]
 \centering
 \scriptsize
-\setlength{\tabcolsep}{3.5pt}
+\setlength{\tabcolsep}{2.4pt}
 \input{tables/wrong_model.tex}
 \caption{Using the wrong model. Left: share of records (\%) in which the estimated 99\% level in the
 last year misses the true risk by more than a factor of 2 either way; bold where the model's form
@@ -558,7 +566,7 @@ Table~\ref{tab:wrongdetail} splits the misses into under- and overstatement.}
 
 \paragraph{Findings.}
 \begin{itemize}
-\item \textbf{The wrong driving variable costs 10--20 percentage points at 85 years.} When the
+\item \textbf{The wrong driving variable can cost 10--20 percentage points at 85 years.} When the
   distribution follows an accelerating mean state, the location + width trend misses 75\% of
   records and the covariate model 65\%. When the width changes while the mean stays constant, the
   covariate model, whose covariate then carries no signal, misses 69\% and the location + width
@@ -574,7 +582,17 @@ Table~\ref{tab:wrongdetail} splits the misses into under- and overstatement.}
 \item \textbf{For 30-year records the choice matters little}: every model misses 66--87\% of
   records, and within each true process the models differ by 5--13 points, while sampling noise
   alone causes 71\%.
-\item \textbf{Time-driven warming.} \PENDING{results for the time-driven counterparts}
+\item \textbf{When the mean accelerates, the mean-state model loses little even if the width follows
+  time.} In the time-driven counterparts of the accelerating warming cases the covariate model's
+  assumption about the width is wrong, yet it misses 64\% of 85-year records, against 68\% for the
+  location + width trend and the Bayesian model and 71\% for the location trend. The time-trend
+  models do better than when the width follows the mean (68\% against 75\% for the location + width
+  trend), and the covariate model about the same (64\% against 65\%). Following the accelerating
+  mean, which a straight line in time cannot, matters more than the driver of the width, which
+  differs little between the two (Figure~\ref{fig:pworld}). The exception is the heavy-tailed $t$
+  parent, whose change is mostly in the tail: there the location + width trend does better (48\%
+  against 54\%). Our parametric time models are linear; a time model with a curved mean might do
+  better, but we have not tested one.
 \end{itemize}
 
 \paragraph{Can the data tell?}
@@ -582,12 +600,42 @@ AIC selects among the constant, location-trend, location + width trend and covar
 (Table~\ref{tab:wrong}, right). With 85 years it picks the covariate model in 66\% of the
 accelerating mean-state cases and 72\% of the step cases, but also in 17\% of records with no change.
 It almost never detects a width change: when only the width changes it picks the location trend in
-71\% of records and the location + width trend in 17\%. With 30 years it picks the constant fit or
-the location trend in most records whatever the truth. \PENDING{accuracy of the AIC-selected and
-AIC-weighted estimates}
+71\% of records and the location + width trend in 17\%. When the width follows time rather than the
+mean, it picks the covariate model less often (42\% against 66\%), so it leans the right way, but it
+cannot reliably tell the two apart. With 30 years it picks the constant fit or the location trend in
+most records whatever the truth.
+
+Picking the lowest-AIC model is never far off, but it is sometimes 10 points worse than the best
+single model: with no change it misses 54\% of 85-year records against 44\% for the constant fit,
+and after a tail change 69\% against 59\%. Averaging the four models with Akaike weights does better
+(Table~\ref{tab:wrong}). At 85 years it is within 4 points of the best single model for every true
+process, and when the mean moves linearly it beats all of them (46\% against 49\% for the best). By
+contrast, every single model, including the Bayesian one, is 11--30 points worse than the best for
+at least one process. On the one-sided score of Section~\ref{sec:quant} the average matches the
+location trend over the standard cases (30\% understated at 85 years, Table~\ref{tab:headline}), and
+in the covariate-model cases it lies between the location + width trend and the covariate model
+(52\% against 60\% and 45\%). With 30 and 45 years the differences between all the choices are small,
+and the average is within 6 points of the best model throughout.
 
 \paragraph{What to do when we do not know.}
-\PENDING{recommendations, once the AIC and time-driven results are in}
+\begin{itemize}
+\item \textbf{Do not expect the record to reveal the driver.} The time and mean-state models
+  coincide whenever the mean moves linearly in time, and AIC rarely detects a width change. Whether
+  the change follows time or the mean state has to come from physical reasoning or from evidence
+  outside the record.
+\item \textbf{Average rather than choose.} An AIC-weighted average of the constant, time-trend and
+  mean-state models gives up a few points against the best model for the true process, whatever that
+  is, and avoids the large losses of committing to a wrong one.
+\item \textbf{When the mean clearly moves nonlinearly, include a mean-state model.} With an
+  accelerating mean or a step, the covariate model did best whether or not the width followed the
+  mean.
+\item \textbf{Report the spread between plausible models} as part of the uncertainty of the current
+  return level, alongside the sampling uncertainty of each.
+\item \textbf{With 30 years, the model matters less than the data.} Two-thirds or more of 30-year
+  records miss the current 99\% level by a factor of 2 whatever is fitted; only longer records or
+  additional information (other sites, or more declustered values per year) are likely to change
+  that.
+\end{itemize}
 
 \begin{figure}[H]
 \centering
@@ -650,7 +698,7 @@ constant.
 \section{The Bayesian random-walk model}\label{sec:bayes}
 
 \paragraph{Credible intervals.}
-The 90\% intervals for the last year's $\Xp$ contain the truth in 93--100\% of records, so they
+The 90\% intervals for the last year's $\Xp$ contain the truth in 94--100\% of records, so they
 are conservative (Figure~\ref{fig:bayes}). Their median width is 1.3 to 3 times the 5--95\% range
 of the actual errors of the posterior median. The intervals are honest but too wide to be
 informative for short records.
@@ -666,7 +714,7 @@ width). One dot per parent; standard cases.}
 
 \paragraph{Convergence.}
 Under the authors' prior most fits have some divergent transitions (median 9 of 4,000 at
-85 years and 80 at 30 years). With one value per year, R-hat exceeds 1.05 in fewer than 1\% of
+85 years and 81 at 30 years). With one value per year, R-hat exceeds 1.05 in fewer than 1\% of
 fits. With three values per year it exceeds 1.05 in 10--12\% of fits, almost always far above
 (R-hat $>1.5$, chains in different modes), and these are concentrated in the bounded beta parent
 (25--32\% of its fits). Our chains are shorter than the authors', but disagreement between chains
@@ -682,7 +730,9 @@ brings interval coverage closer to nominal (93--98\%). See Appendix Figure~\ref{
 Figure~\ref{fig:pprior} shows the cost: the tighter prior narrows the bands, but it also makes the
 paths stiffer, so for the $t$ tail change the median follows less of the early, high values.
 Figure~\ref{fig:ppriorcov} compares both priors with the covariate model in the covariate-model
-cases.
+cases. There the tighter prior is slightly worse (60\% understated at 85 years against 57\%, and 45\%
+for the covariate model), and its intervals cover the truth in only 88\% of records (80--92\% by
+case), because its stiffer paths lag the acceleration at the end of the record.
 
 \begin{figure}[H]
 \centering

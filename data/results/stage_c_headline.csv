@@ -8,6 +8,8 @@ design,kind,estimator,cases,records,exc_median,under2x,over2x,within2x
 30 yr,standard,recent30,10,2000,0.0188,0.4880,0.2955,0.2165
 30 yr,standard,cov3,10,2000,0.0257,0.5390,0.3110,0.1500
 30 yr,standard,split,10,2000,0.0207,0.5120,0.3055,0.1825
+30 yr,standard,aic,10,2000,0.0148,0.4250,0.3315,0.2435
+30 yr,standard,aic_avg,10,2000,0.0147,0.4065,0.3405,0.2530
 30 yr,standard,cov2_true,10,2000,0.0156,0.4330,0.3350,0.2320
 30 yr,standard,cov3_true,10,2000,0.0163,0.4540,0.3465,0.1995
 30 yr,standard,tvp_mean,10,2000,0.0000,0.0515,0.8705,0.0780
@@ -20,9 +22,25 @@ design,kind,estimator,cases,records,exc_median,under2x,over2x,within2x
 30 yr,coupled,recent30,6,700,0.0549,0.7186,0.1386,0.1429
 30 yr,coupled,cov3,6,700,0.0372,0.5471,0.3871,0.0657
 30 yr,coupled,split,6,700,0.0417,0.6286,0.2371,0.1343
+30 yr,coupled,aic,6,700,0.0268,0.5671,0.2543,0.1786
+30 yr,coupled,aic_avg,6,700,0.0245,0.5600,0.2614,0.1786
 30 yr,coupled,cov2_true,6,700,0.0140,0.4300,0.3429,0.2271
 30 yr,coupled,cov3_true,6,700,0.0223,0.5186,0.3571,0.1243
 30 yr,coupled,tvp_mean,6,700,0.0000,0.0543,0.8900,0.0557
+30 yr,time,const,2,300,0.0545,0.7233,0.1333,0.1433
+30 yr,time,trend,2,300,0.0325,0.6333,0.1967,0.1700
+30 yr,time,tvp_median,2,300,0.0173,0.4567,0.3267,0.2167
+30 yr,time,trend2,2,300,0.0207,0.5100,0.2700,0.2200
+30 yr,time,cov2,2,300,0.0175,0.4667,0.3233,0.2100
+30 yr,time,trend3,2,300,0.0294,0.5467,0.3500,0.1033
+30 yr,time,recent30,2,300,0.0545,0.7233,0.1333,0.1433
+30 yr,time,cov3,2,300,0.0274,0.5233,0.4233,0.0533
+30 yr,time,split,2,300,0.0471,0.6333,0.2100,0.1567
+30 yr,time,aic,2,300,0.0242,0.5533,0.2567,0.1900
+30 yr,time,aic_avg,2,300,0.0241,0.5567,0.2533,0.1900
+30 yr,time,cov2_true,2,300,0.0102,0.4067,0.4100,0.1833
+30 yr,time,cov3_true,2,300,0.0216,0.5100,0.3633,0.1267
+30 yr,time,tvp_mean,2,300,0.0000,0.0667,0.8667,0.0667
 45 yr,standard,const,10,2000,0.0169,0.4510,0.2750,0.2740
 45 yr,standard,trend,10,2000,0.0113,0.3335,0.3525,0.3140
 45 yr,standard,tvp_median,10,2000,0.0094,0.3350,0.3635,0.3015
@@ -32,6 +50,8 @@ design,kind,estimator,cases,records,exc_median,under2x,over2x,within2x
 45 yr,standard,recent30,10,2000,0.0162,0.4445,0.2655,0.2900
 45 yr,standard,cov3,10,2000,0.0175,0.4710,0.3095,0.2195
 45 yr,standard,split,10,2000,0.0167,0.4425,0.2625,0.2950
+45 yr,standard,aic,10,2000,0.0127,0.3760,0.3315,0.2925
+45 yr,standard,aic_avg,10,2000,0.0117,0.3640,0.3290,0.3070
 45 yr,standard,cov2_true,10,2000,0.0131,0.3905,0.3220,0.2875
 45 yr,standard,cov3_true,10,2000,0.0138,0.4065,0.3310,0.2625
 45 yr,standard,tvp_mean,10,2000,0.0001,0.0975,0.7835,0.1190
@@ -44,9 +64,25 @@ design,kind,estimator,cases,records,exc_median,under2x,over2x,within2x
 45 yr,coupled,recent30,6,700,0.0414,0.6743,0.0957,0.2300
 45 yr,coupled,cov3,6,700,0.0265,0.5414,0.3071,0.1514
 45 yr,coupled,split,6,700,0.0415,0.6714,0.1286,0.2000
+45 yr,coupled,aic,6,700,0.0218,0.5300,0.2086,0.2614
+45 yr,coupled,aic_avg,6,700,0.0220,0.5243,0.2057,0.2700
 45 yr,coupled,cov2_true,6,700,0.0139,0.4114,0.2914,0.2971
 45 yr,coupled,cov3_true,6,700,0.0146,0.4571,0.3943,0.1486
 45 yr,coupled,tvp_mean,6,700,0.0001,0.1186,0.7729,0.1086
+45 yr,time,const,2,300,0.0591,0.7767,0.0567,0.1667
+45 yr,time,trend,2,300,0.0290,0.6233,0.1267,0.2500
+45 yr,time,tvp_median,2,300,0.0180,0.4833,0.2733,0.2433
+45 yr,time,trend2,2,300,0.0241,0.5333,0.2167,0.2500
+45 yr,time,cov2,2,300,0.0137,0.4033,0.3067,0.2900
+45 yr,time,trend3,2,300,0.0227,0.5267,0.3000,0.1733
+45 yr,time,recent30,2,300,0.0465,0.7000,0.1033,0.1967
+45 yr,time,cov3,2,300,0.0217,0.5133,0.3500,0.1367
+45 yr,time,split,2,300,0.0460,0.6833,0.1400,0.1767
+45 yr,time,aic,2,300,0.0223,0.5200,0.2133,0.2667
+45 yr,time,aic_avg,2,300,0.0217,0.5133,0.2067,0.2800
+45 yr,time,cov2_true,2,300,0.0092,0.3300,0.3867,0.2833
+45 yr,time,cov3_true,2,300,0.0095,0.4300,0.4667,0.1033
+45 yr,time,tvp_mean,2,300,0.0001,0.1200,0.7567,0.1233
 85 yr,standard,const,10,2000,0.0177,0.4570,0.1895,0.3535
 85 yr,standard,trend,10,2000,0.0114,0.2965,0.2645,0.4390
 85 yr,standard,tvp_median,10,2000,0.0150,0.3935,0.1950,0.4115
@@ -56,6 +92,8 @@ design,kind,estimator,cases,records,exc_median,under2x,over2x,within2x
 85 yr,standard,recent30,10,2000,0.0194,0.4935,0.1525,0.3540
 85 yr,standard,cov3,10,2000,0.0164,0.4445,0.2600,0.2955
 85 yr,standard,split,10,2000,0.0175,0.4455,0.1605,0.3940
+85 yr,standard,aic,10,2000,0.0131,0.3410,0.2080,0.4510
+85 yr,standard,aic_avg,10,2000,0.0130,0.3045,0.2010,0.4945
 85 yr,standard,cov2_true,10,2000,0.0143,0.3605,0.2320,0.4075
 85 yr,standard,cov3_true,10,2000,0.0148,0.3950,0.2475,0.3575
 85 yr,standard,tvp_mean,10,2000,0.0048,0.2050,0.5080,0.2870
@@ -68,9 +106,25 @@ design,kind,estimator,cases,records,exc_median,under2x,over2x,within2x
 85 yr,coupled,recent30,6,700,0.0432,0.7243,0.0586,0.2171
 85 yr,coupled,cov3,6,700,0.0283,0.5700,0.2314,0.1986
 85 yr,coupled,split,6,700,0.0442,0.7629,0.0357,0.2014
+85 yr,coupled,aic,6,700,0.0204,0.5043,0.1243,0.3714
+85 yr,coupled,aic_avg,6,700,0.0209,0.5171,0.1229,0.3600
 85 yr,coupled,cov2_true,6,700,0.0161,0.4271,0.2014,0.3714
 85 yr,coupled,cov3_true,6,700,0.0201,0.5000,0.2871,0.2129
 85 yr,coupled,tvp_mean,6,700,0.0069,0.2757,0.4457,0.2786
+85 yr,time,const,2,300,0.0642,0.8367,0.0133,0.1500
+85 yr,time,trend,2,300,0.0296,0.6733,0.0400,0.2867
+85 yr,time,tvp_median,2,300,0.0239,0.5533,0.1267,0.3200
+85 yr,time,trend2,2,300,0.0262,0.5867,0.0933,0.3200
+85 yr,time,cov2,2,300,0.0137,0.4167,0.2200,0.3633
+85 yr,time,trend3,2,300,0.0320,0.6233,0.1400,0.2367
+85 yr,time,recent30,2,300,0.0496,0.7467,0.0633,0.1900
+85 yr,time,cov3,2,300,0.0268,0.5600,0.2633,0.1767
+85 yr,time,split,2,300,0.0505,0.7667,0.0367,0.1967
+85 yr,time,aic,2,300,0.0224,0.5367,0.1367,0.3267
+85 yr,time,aic_avg,2,300,0.0213,0.5300,0.1200,0.3500
+85 yr,time,cov2_true,2,300,0.0110,0.3400,0.2967,0.3633
+85 yr,time,cov3_true,2,300,0.0141,0.4367,0.3467,0.2167
+85 yr,time,tvp_mean,2,300,0.0074,0.2867,0.4333,0.2800
 "45 yr, 3/yr",standard,const,10,2000,0.0171,0.4575,0.1900,0.3525
 "45 yr, 3/yr",standard,trend,10,2000,0.0112,0.3110,0.2940,0.3950
 "45 yr, 3/yr",standard,tvp_median,10,2000,0.0094,0.2760,0.3400,0.3840
@@ -80,6 +134,8 @@ design,kind,estimator,cases,records,exc_median,under2x,over2x,within2x
 "45 yr, 3/yr",standard,recent30,10,2000,0.0149,0.4285,0.2180,0.3535
 "45 yr, 3/yr",standard,cov3,10,2000,0.0156,0.4485,0.3150,0.2365
 "45 yr, 3/yr",standard,split,10,2000,0.0146,0.4045,0.2575,0.3380
+"45 yr, 3/yr",standard,aic,10,2000,0.0112,0.3150,0.2870,0.3980
+"45 yr, 3/yr",standard,aic_avg,10,2000,0.0106,0.3040,0.2850,0.4110
 "45 yr, 3/yr",standard,cov2_true,10,2000,0.0125,0.3675,0.2655,0.3670
 "45 yr, 3/yr",standard,cov3_true,10,2000,0.0131,0.3770,0.2845,0.3385
 "45 yr, 3/yr",standard,tvp_mean,10,2000,0.0033,0.1345,0.5900,0.2755
@@ -92,22 +148,28 @@ design,kind,estimator,cases,records,exc_median,under2x,over2x,within2x
 "85 yr, 3/yr",standard,recent30,10,2000,0.0196,0.4925,0.1410,0.3665
 "85 yr, 3/yr",standard,cov3,10,2000,0.0151,0.4065,0.2350,0.3585
 "85 yr, 3/yr",standard,split,10,2000,0.0168,0.4190,0.1470,0.4340
+"85 yr, 3/yr",standard,aic,10,2000,0.0138,0.2975,0.1550,0.5475
+"85 yr, 3/yr",standard,aic_avg,10,2000,0.0140,0.2830,0.1540,0.5630
 "85 yr, 3/yr",standard,cov2_true,10,2000,0.0148,0.3570,0.1955,0.4475
 "85 yr, 3/yr",standard,cov3_true,10,2000,0.0157,0.3935,0.2210,0.3855
 "85 yr, 3/yr",standard,tvp_mean,10,2000,0.0079,0.2170,0.3820,0.4010
-"85 yr, indep. days",standard,const,5,1200,0.0164,0.4267,0.1750,0.3983
-"85 yr, indep. days",standard,trend,5,1200,0.0114,0.2692,0.2458,0.4850
-"85 yr, indep. days",standard,tvp_median,5,1200,0.0134,0.3617,0.2642,0.3742
-"85 yr, indep. days",standard,trend2,5,1200,0.0129,0.3542,0.2033,0.4425
-"85 yr, indep. days",standard,cov2,5,1200,0.0133,0.3600,0.2117,0.4283
-"85 yr, indep. days",standard,trend3,5,1200,0.0138,0.3950,0.3283,0.2767
-"85 yr, indep. days",standard,recent30,5,1200,0.0171,0.4583,0.2492,0.2925
-"85 yr, indep. days",standard,cov3,5,1200,0.0148,0.4075,0.2542,0.3383
-"85 yr, indep. days",standard,split,5,1200,0.0151,0.4050,0.1983,0.3967
-"85 yr, indep. days",standard,cov2_true,5,1200,0.0138,0.3650,0.2117,0.4233
-"85 yr, indep. days",standard,cov3_true,5,1200,0.0138,0.3792,0.2483,0.3725
-"85 yr, indep. days",standard,tvp_mean,5,1200,0.0041,0.1600,0.5433,0.2967
+"85 yr, indep. days",standard,const,10,2000,0.0175,0.4525,0.2115,0.3360
+"85 yr, indep. days",standard,trend,10,2000,0.0112,0.2775,0.3070,0.4155
+"85 yr, indep. days",standard,tvp_median,10,2000,0.0134,0.3760,0.2770,0.3470
+"85 yr, indep. days",standard,trend2,10,2000,0.0124,0.3620,0.2335,0.4045
+"85 yr, indep. days",standard,cov2,10,2000,0.0137,0.3760,0.2325,0.3915
+"85 yr, indep. days",standard,trend3,10,2000,0.0134,0.3955,0.3360,0.2685
+"85 yr, indep. days",standard,recent30,10,2000,0.0185,0.4780,0.2375,0.2845
+"85 yr, indep. days",standard,cov3,10,2000,0.0158,0.4395,0.2635,0.2970
+"85 yr, indep. days",standard,split,10,2000,0.0161,0.4285,0.2055,0.3660
+"85 yr, indep. days",standard,aic,10,2000,0.0134,0.3380,0.2160,0.4460
+"85 yr, indep. days",standard,aic_avg,10,2000,0.0133,0.3255,0.2200,0.4545
+"85 yr, indep. days",standard,cov2_true,10,2000,0.0138,0.3845,0.2485,0.3670
+"85 yr, indep. days",standard,cov3_true,10,2000,0.0138,0.3885,0.2760,0.3355
+"85 yr, indep. days",standard,tvp_mean,10,2000,0.0038,0.1755,0.5485,0.2760
 "45 yr, tight prior",standard,tvp_median,10,2000,0.0097,0.3375,0.3605,0.3020
 "45 yr, tight prior",standard,tvp_mean,10,2000,0.0038,0.2115,0.5445,0.2440
 "85 yr, tight prior",standard,tvp_median,10,2000,0.0132,0.3525,0.2095,0.4380
 "85 yr, tight prior",standard,tvp_mean,10,2000,0.0093,0.2640,0.3000,0.4360
+"85 yr, tight prior",coupled,tvp_median,6,700,0.0252,0.6000,0.0857,0.3143
+"85 yr, tight prior",coupled,tvp_mean,6,700,0.0179,0.4686,0.1329,0.3986

@@ -329,6 +329,9 @@ def short_label(family, ch):
     coupled = ch.knob in ("warm_coupled", "warm_time", "precip_scaling", "precip_shape")
     shape = {"linear": " (linear)" if coupled else "", "step50": " (step)",
              "exp": " (accel.)"}[ch.shape] if a else ""
+    if ", " in what:                                # long labels: shape after the first part,
+        head, rest = what.split(", ", 1)            # the rest on a third line
+        return f"{FAMILY[family]}\n{head}{shape},\n{rest}"
     return f"{FAMILY[family]}\n{what}{shape}"
 
 
@@ -731,7 +734,10 @@ def fig_wrong_model(rec, png):
     cmap = LinearSegmentedColormap.from_list("blue", ["#f4f8fd", "#cde2fb", "#86b6ef", "#3987e5",
                                                       "#1c5cab", "#0d366b"])
     designs = ["30 yr", "85 yr"]
-    fig, axes = plt.subplots(1, 2, figsize=(6.5, 3.4), sharey=True)
+    short = {"const": "Const.", "trend": "Loc.\ntrend", "trend2": "Loc. + wid.\ntrend",
+             "tvp_median": "Bayes\n(median)", "cov2": "Mean-state\ncovariate", "aic": "AIC\nchoice",
+             "aic_avg": "AIC\naverage", "cov2_true": "Oracle\ncovariate"}
+    fig, axes = plt.subplots(2, 1, figsize=(6.5, 5.4), sharex=True)
     for ax, d in zip(axes, designs):
         M = np.full((len(PROCESSES), len(WRONG_EST)), np.nan)
         for i, (pk, _, _) in enumerate(PROCESSES):
@@ -743,26 +749,27 @@ def fig_wrong_model(rec, png):
         for i, (pk, _, _) in enumerate(PROCESSES):
             for j, n in enumerate(WRONG_EST):
                 if not np.isfinite(M[i, j]):
-                    ax.text(j, i, "–", ha="center", va="center", fontsize=6.5, color=MUTED)
+                    ax.text(j, i, "–", ha="center", va="center", fontsize=7.5, color=MUTED)
                     continue
                 right = pk in RIGHT_FORM.get(n, set())
                 ax.text(j, i, f"{100 * M[i, j]:.0f}" + ("" if right or n.startswith("aic") else "×"),
-                        ha="center", va="center", fontsize=6.5,
+                        ha="center", va="center", fontsize=7.5,
                         color="white" if M[i, j] > 0.7 else INK, fontweight="bold" if right else "normal")
-        ax.set_xticks(range(len(WRONG_EST)), [EST[n][0] for n in WRONG_EST], rotation=60, ha="right")
-        ax.set_title(d.replace("yr", "years"), fontsize=8)
+        ax.set_yticks(range(len(PROCESSES)), [lab for _, lab, _ in PROCESSES], fontsize=7.5)
+        ax.set_title(d.replace("yr", "years"), fontsize=8.5, loc="left")
         ax.grid(False)
+        ax.tick_params(length=0)
         for sp in ax.spines.values():
             sp.set_visible(False)
-        ax.axvline(4.5, color="white", lw=3)
-        ax.axvline(6.5, color="white", lw=3)
-    axes[0].set_yticks(range(len(PROCESSES)), [lab for _, lab, _ in PROCESSES])
-    fig.suptitle("Share of records in which the estimated 99% level misses the true risk by more than "
-                 "a factor of 2 (either way), %", fontsize=8, x=0.6)
-    fig.text(0.5, -0.03, "Bold: the model's form contains the truth (approximately).  ×: it does not.  "
-             "AIC columns choose among the constant, location, location + width and covariate models.",
-             ha="center", fontsize=6.8, color=INK2)
-    fig.tight_layout()
+        ax.axvline(4.5, color="white", lw=4)
+        ax.axvline(6.5, color="white", lw=4)
+    axes[-1].set_xticks(range(len(WRONG_EST)), [short[n] for n in WRONG_EST], fontsize=7.5)
+    fig.suptitle("Share of records in which the estimated 99% level in the last year misses the true "
+                 "risk by more than a factor of 2 (either way), %", fontsize=8.5)
+    fig.text(0.5, 0.005, "Bold: the model's form contains the truth (approximately); ×: it does not.\n"
+             "AIC: choice among, or average of, the first, second, third and fifth models. "
+             "Oracle: covariate model given the true mean.", ha="center", fontsize=7, color=INK2)
+    fig.tight_layout(rect=(0, 0.05, 1, 1))
     _save(fig, "fig_wrong_model", png)
 
 
