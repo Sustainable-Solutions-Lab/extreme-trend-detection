@@ -479,6 +479,31 @@ def simulate_scenario(family, change, k=1, T=85, phi=0.5, r=0, N=100, seed=1, wo
                           mcmc.get("prior", "mw"), **pred)
 
 
+def scenario_jobs(family, change, k, T, phi, r, N, seed, mcmc=None):
+    """The per-panel jobs of one scenario (for a pool shared across scenarios)."""
+    return [(family, change, k, T, phi, r, seed, i, dict(mcmc or {})) for i in range(N)]
+
+
+def assemble(family, change, k, T, phi, r, seed, parts, prior="mw"):
+    """ScenarioResult from the outputs of ``_job`` for panels 0..N-1 (in any order)."""
+    from .power import STATS
+    parts = sorted(parts, key=lambda x: x[0])
+    N = len(parts)
+    stats = np.full((N, len(STATS)), np.nan)
+    mle_q = np.full((N, 3, len(PROBS), T), np.nan)
+    tvp_q = np.full((N, 4, len(PROBS), T), np.nan)
+    diag = np.full((N, 4), np.nan)
+    pred = {}
+    for i, st, mq, tq, dg, pr in parts:
+        stats[i], mle_q[i], tvp_q[i], diag[i] = st, mq, tq, dg
+        for key, v in pr.items():
+            if key not in pred:
+                pred[key] = np.full((N,) + v.shape, np.nan)
+            pred[key][i] = v
+    return ScenarioResult(family, change, k, T, phi, r, seed, stats, mle_q, tvp_q, diag, prior,
+                          **pred)
+
+
 def save(res: ScenarioResult, path):
     np.savez_compressed(path, stats=res.stats, mle_q=res.mle_q.astype(np.float32),
                         tvp_q=res.tvp_q.astype(np.float32), diag=res.diag, family=res.family,

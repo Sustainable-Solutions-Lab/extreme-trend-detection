@@ -187,7 +187,11 @@ def _replay_order(res):
 
 
 def replay(args):
+    """All panels of all scenarios go to one process pool, so workers do not idle while the
+    slowest fits of a scenario finish; each scenario is saved and scored once its panels are in."""
     import numpy as np
+    from concurrent.futures import ProcessPoolExecutor
+    from tvextremes import critical_values as cv
     PRED_OUT.mkdir(parents=True, exist_ok=True)
     old = []
     for path in sorted(OUT.glob("*.npz")):
@@ -196,23 +200,27 @@ def replay(args):
         old.append((path, stage_c.load(path)))
     old.sort(key=lambda pr: _replay_order(pr[1]))
     print(f"{len(old)} scenarios, {sum(r.stats.shape[0] for _, r in old)} fits", flush=True)
-    for path, prev in old:
-        out = PRED_OUT / path.name
-        if out.exists():
-            res = stage_c.load(out)
-            print(f"{out.name}: reused", flush=True)
-        else:
-            t0 = time.time()
-            res = stage_c.simulate_scenario(prev.family, prev.change, k=prev.k, T=prev.T,
-                                            phi=prev.phi, r=prev.r, N=prev.stats.shape[0],
-                                            seed=prev.seed, workers=args.workers,
-                                            mcmc=dict(prior=prev.prior))
+    todo = [(path, prev) for path, prev in old if not (PRED_OUT / path.name).exists()]
+    print(f"{len(old) - len(todo)} already done", flush=True)
+    stage_c.model()                                   # compile once before forking
+    workers = args.workers or max(1, (os.cpu_count() or 3) - 2)
+    with ProcessPoolExecutor(max_workers=workers, initializer=cv._single_thread) as ex:
+        futs = [[ex.submit(stage_c._job, j)
+                 for j in stage_c.scenario_jobs(prev.family, prev.change, prev.k, prev.T, prev.phi,
+                                                prev.r, prev.stats.shape[0], prev.seed,
+                                                dict(prior=prev.prior))]
+                for _, prev in todo]
+        t0 = time.time()
+        for n, ((path, prev), fs) in enumerate(zip(todo, futs), 1):
+            res = stage_c.assemble(prev.family, prev.change, prev.k, prev.T, prev.phi, prev.r,
+                                   prev.seed, [f.result() for f in fs], prev.prior)
+            out = PRED_OUT / path.name
             stage_c.save(res, out)
             dq = np.nanmax(np.abs(res.tvp_q[:, 1] - prev.tvp_q[:, 1]))
-            print(f"{out.name}: {res.stats.shape[0]} fits in {time.time() - t0:.0f} s; "
+            print(f"[{n}/{len(todo)}, {(time.time() - t0) / 3600:.1f} h] {out.name}: "
                   f"max change in posterior median vs the earlier run {dq:.2g}", flush=True)
-        extra = stage_c.extra_estimates(res, workers=args.workers or 4, cache_dir=OUT)
-        write_rows(stage_c.score_rows(res, cache_dir=CACHE, extra=extra))
+            extra = stage_c.extra_estimates(res, workers=1, cache_dir=OUT)
+            write_rows(stage_c.score_rows(res, cache_dir=CACHE, extra=extra))
 
 
 if __name__ == "__main__":
