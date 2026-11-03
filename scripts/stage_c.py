@@ -59,6 +59,18 @@ COUPLED = {"normal": [("warm_coupled", "exp", 0.5), ("warm_coupled", "linear", 0
                      ("precip_shape", "exp", 0.2)]}
 
 
+# Time-driven counterparts of the accelerating warm_coupled cases: the same mean path and the same
+# first- and last-year distributions, but the width and tail change linearly in time instead of
+# following the mean state. Together with COUPLED they test what happens when the change is
+# modelled as a function of the wrong variable.
+TIME_DRIVEN = {"normal": [("warm_time", "exp", 0.5)], "t": [("warm_time", "exp", 0.5)],
+               "beta": [("warm_time", "exp", 0.25)]}
+
+
+def time_driven_scenarios(family):
+    return [pa.Change(*c) for c in TIME_DRIVEN.get(family, [])]
+
+
 def coupled_scenarios(family):
     return [pa.NULL] + [pa.Change(*c) for c in COUPLED.get(family, [])]
 
@@ -115,6 +127,8 @@ def main():
     p.add_argument("--nice", type=int, default=19)
     p.add_argument("--coupled", action="store_true",
                    help="run the covariate-model test cases instead of the standard changes")
+    p.add_argument("--time-driven", action="store_true",
+                   help="run the time-driven counterparts of the coupled cases (TIME_DRIVEN)")
     p.add_argument("--prior", default="mw", choices=sorted(stage_c.PRIORS),
                    help="prior scales of the random walks (default: the authors')")
     p.add_argument("--rescore", action="store_true",
@@ -126,7 +140,9 @@ def main():
     for T in args.T:
         for k in args.k:
             for family in args.families:
-                for ch in (coupled_scenarios if args.coupled else scenarios)(family):
+                which = (time_driven_scenarios if args.time_driven else
+                         coupled_scenarios if args.coupled else scenarios)
+                for ch in which(family):
                     path = path_for(family, ch, k, T, args.phi, args.r, args.prior)
                     if args.rescore and not path.exists():
                         continue

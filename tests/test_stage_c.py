@@ -85,3 +85,19 @@ def test_extra_estimators_by_name():
     assert np.allclose(two[1], all_[names.index("recent30")], equal_nan=True)
     assert np.all(np.isfinite(all_))
     assert np.ptp(all_[names.index("recent30")], axis=1).max() == 0     # flat path
+
+
+def test_aic_estimators():
+    ch = pa.Change("warm_coupled", "exp", 0.5)
+    names = stage_c.EXTRA_NAMES
+    _, out = stage_c._extra_job(("normal", ch, 1, 85, 0.5, 0, 3, 4, names))
+    rep, choice = stage_c.aic_choice(("normal", ch, 1, 85, 0.5, 0, 3, 4))
+    picked = stage_c.AIC_CANDIDATES[choice]
+    if picked in names:                                     # the selection is that model's path
+        assert np.allclose(out[names.index("aic")], out[names.index(picked)], rtol=1e-6)
+    assert np.all(np.isfinite(out[names.index("aic_avg")]))
+    X, amean = stage_c._panel("normal", ch, 1, 85, 0.5, 0, 3, 4, with_mean=True)
+    from tvextremes.mle import fit_local
+    from tvextremes.stage_b import _start
+    w = stage_c.aic_weights(stage_c.aic_fits(X, amean, fit_local(X, _start(X))))
+    assert abs(sum(w.values()) - 1) < 1e-12 and set(w) <= set(stage_c.AIC_CANDIDATES)

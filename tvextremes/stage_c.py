@@ -179,7 +179,13 @@ def _panel(family, change, k, T, phi, r, seed, rep, with_mean=False):
 #   cov2_true  mu_t and log sigma_t linear in the true m_t, constant xi (oracle)
 #   recent30   constant GEV fitted to the last 30 years only (a common practical shortcut;
 #              equal to the constant fit when T <= 30); its path is flat
-EXTRA_NAMES = ("trend3", "cov3", "cov3_true", "trend2", "recent30", "cov2", "cov2_true")
+#   aic        when the form of the change is unknown, let the data choose: the candidate with the
+#              lowest AIC among AIC_CANDIDATES (constant, location trend, location + width trend,
+#              mean-state covariate)
+#   aic_avg    the Akaike-weighted average of the candidates' X_p paths
+EXTRA_NAMES = ("trend3", "cov3", "cov3_true", "trend2", "recent30", "cov2", "cov2_true", "aic",
+               "aic_avg")
+AIC_CANDIDATES = ("const", "trend", "trend2", "cov2")
 RECENT = 30
 SMOOTH_YEARS = 10.0
 
@@ -199,6 +205,52 @@ def smooth_local_linear(y, h=SMOOTH_YEARS):
     return out
 
 
+def aic_fits(X, amean, start):
+    """Fits of the AIC candidates to one record: {name: (mu_t, sigma_t, xi_t, loglik, n_params)}
+    (missing where a fit failed)."""
+    from .pseudo import time_index
+    from .trend_tests import fit_gev_covariate
+    T = X.shape[0]
+    out = {"const": (np.full(T, start.mu), np.full(T, start.sigma), np.full(T, start.xi),
+                     start.loglik, 3)}
+    spec = {"trend": (time_index(T), ("mu",), 4), "trend2": (time_index(T), ("mu", "sigma"), 5),
+            "cov2": (smooth_local_linear(amean), ("mu", "sigma"), 5)}
+    for name, (c, vary, npar) in spec.items():
+        c = np.asarray(c, float)
+        if np.ptp(c) == 0:
+            c = np.zeros(T)
+        try:
+            f = fit_gev_covariate(X, c, start=start, vary=vary)
+        except (np.linalg.LinAlgError, ValueError, FloatingPointError):
+            continue
+        if f.success:
+            out[name] = (*f.params(), f.loglik, npar)
+    return out
+
+
+def aic_weights(fits):
+    """Akaike weights {name: w} of the fitted candidates."""
+    aic = {n: 2 * f[4] - 2 * f[3] for n, f in fits.items()}
+    best = min(aic.values())
+    w = {n: np.exp(-(a - best) / 2) for n, a in aic.items()}
+    tot = sum(w.values())
+    return {n: v / tot for n, v in w.items()}
+
+
+def aic_choice(args):
+    """Index into AIC_CANDIDATES of the model AIC selects for one record (-1 if none fitted)."""
+    from .mle import fit_local
+    from .stage_b import _start
+    family, change, k, T, phi, r, seed, rep = args
+    X, amean = _panel(family, change, k, T, phi, r, seed, rep, with_mean=True)
+    with np.errstate(all="ignore"):
+        start = fit_local(X, _start(X))
+        if not start.success:
+            return rep, -1
+        w = aic_weights(aic_fits(X, amean, start))
+    return rep, AIC_CANDIDATES.index(max(w, key=w.get))
+
+
 def _extra_job(args):
     from .likelihood import gev_quantile
     from .mle import fit_local
@@ -215,7 +267,17 @@ def _extra_job(args):
         start = fit_local(X, _start(X))
         if not start.success:
             return rep, out
+        if "aic" in names or "aic_avg" in names:
+            fits = aic_fits(X, amean, start)
+            w = aic_weights(fits)
+            qs = {n: np.stack([gev_quantile(p, *fits[n][:3]) for p in PROBS]) for n in fits}
+            if "aic" in names:
+                out[names.index("aic")] = qs[max(w, key=w.get)]
+            if "aic_avg" in names:
+                out[names.index("aic_avg")] = sum(w[n] * qs[n] for n in fits)
         for i, name in enumerate(names):
+            if name in ("aic", "aic_avg"):
+                continue
             if name == "recent30":
                 Xr = X[-RECENT:]
                 fr = fit_local(Xr, _start(Xr)) if T > RECENT else start

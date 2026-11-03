@@ -43,8 +43,8 @@ FAMILIES = ("normal", "gamma", "t", "tanh", "beta")
 BASE_TAIL = {"normal": None, "gamma": 2.0, "t": 6.0, "tanh": 3.0, "beta": 4.0}
 TAIL_NAME = {"gamma": "shape a", "t": "degrees of freedom", "tanh": "headroom c = L/s",
              "beta": "b (xi = -1/b)"}
-KNOBS = ("mean", "width", "tail", "alpha", "capped_warming", "warm_coupled", "precip_scaling",
-         "precip_shape")
+KNOBS = ("mean", "width", "tail", "alpha", "capped_warming", "warm_coupled", "warm_time",
+         "precip_scaling", "precip_shape")
 # Coupled changes (covariate-model test cases): width and tail move with the mean.
 COUPLE_WIDTH = 0.25       # d log s / d m: width grows 25% per daily sd of warming
 COUPLE_TAIL = -0.2        # d log(tail parameter) / d m: heavier (t, gamma) or longer (beta) upper tail
@@ -225,6 +225,18 @@ def parameter_paths(family, change: Change, T, tail0=None):
             tail[:, 1] = tail0 * np.exp(COUPLE_TAIL * m)
         elif tail is not None:
             tail = tail0 * np.exp(COUPLE_TAIL * m)
+    elif change.knob == "warm_time":
+        # The time-driven counterpart of warm_coupled: the mean rises along g as there, but the
+        # width and tail change linearly in time between the same first- and last-year values, so
+        # they follow time, not the mean state. With a linear g the two knobs are identical; with
+        # an accelerating g they share their first and last years and differ only in between.
+        m = m + g
+        lin = g[0] + (g[-1] - g[0]) * time_index(T)
+        s = np.exp(COUPLE_WIDTH * lin)
+        if family == "beta":
+            tail[:, 1] = tail0 * np.exp(COUPLE_TAIL * lin)
+        elif tail is not None:
+            tail = tail0 * np.exp(COUPLE_TAIL * lin)
     elif change.knob in ("precip_scaling", "precip_shape"):
         # Precipitation-like (gamma only): the raw variable R = theta G, G ~ gamma(a), has its mean
         # scaled by lam_t = exp(g), so the mean rises in proportion (Clausius-Clapeyron-type

@@ -193,3 +193,19 @@ def test_annual_mean_matches_parameters():
                         for t in range(T)] for i in range(2)])
     np.testing.assert_allclose(am, direct)
     assert np.all(np.abs(am - m) < 0.5 * s)
+
+
+def test_warm_time_shares_ends_with_warm_coupled():
+    for fam, a in (("normal", 0.5), ("t", 0.5), ("beta", 0.25)):
+        c = pa.parameter_paths(fam, pa.Change("warm_coupled", "exp", a), 60)
+        w = pa.parameter_paths(fam, pa.Change("warm_time", "exp", a), 60)
+        assert np.allclose(c[0], w[0])                                  # same mean path
+        for x, y in zip(c[1:], w[1:]):
+            if x is not None:
+                assert np.allclose(np.asarray(x)[[0, -1]], np.asarray(y)[[0, -1]])
+        assert np.allclose(np.diff(np.log(w[1]), 2), 0)                 # width linear in time
+        assert not np.allclose(c[1], w[1])
+        lin = [pa.parameter_paths(fam, pa.Change(k, "linear", a), 60) for k in ("warm_coupled", "warm_time")]
+        for x, y in zip(*lin):
+            if x is not None:
+                assert np.allclose(x, y)                                # identical when linear
