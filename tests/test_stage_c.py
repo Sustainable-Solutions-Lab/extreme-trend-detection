@@ -101,3 +101,19 @@ def test_aic_estimators():
     from tvextremes.stage_b import _start
     w = stage_c.aic_weights(stage_c.aic_fits(X, amean, fit_local(X, _start(X))))
     assert abs(sum(w.values()) - 1) < 1e-12 and set(w) <= set(stage_c.AIC_CANDIDATES)
+
+
+def test_predictive_quantile():
+    from tvextremes.likelihood import gev_quantile
+    rng = np.random.default_rng(0)
+    D, T = 500, 4
+    mu = rng.normal(0, 0.3, (D, T))
+    sg = np.exp(rng.normal(0, 0.2, (D, T)))
+    xi = rng.uniform(-0.3, 0.6, (D, T))
+    q = gev_quantile(0.99, mu, sg, xi)
+    x = stage_c.predictive_quantile(mu, sg, xi, 0.99, q.min(axis=0), q.max(axis=0))
+    assert np.allclose(stage_c.gev_survival(x[None], mu, sg, xi).mean(axis=0), 0.01, atol=1e-9)
+    # identical draws: the predictive quantile is the GEV quantile
+    one = stage_c.predictive_quantile(mu[:1].repeat(3, 0), sg[:1].repeat(3, 0),
+                                      xi[:1].repeat(3, 0), 0.99, q[0] - 1, q[0] + 1)
+    assert np.allclose(one, q[0], atol=1e-8)

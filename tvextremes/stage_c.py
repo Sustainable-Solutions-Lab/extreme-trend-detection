@@ -69,6 +69,65 @@ def _inits(X, chains):
     return out
 
 
+# Posterior predictive summaries. The predictive p-quantile x*(t) solves
+#   mean over draws d of P(max_t > x | theta_d) = 1 - p,
+# i.e. the p-quantile of the posterior predictive distribution of the year-t maximum (the
+# posterior integrated over, then the quantile taken). At x* the draws' own exceedance
+# probabilities average exactly 1 - p; their spread over draws (PRED_EXC_Q) is the model's own
+# uncertainty about the risk at that level.
+PRED_EXC_Q = (0.05, 0.25, 0.5, 0.75, 0.95)
+
+
+def gev_survival(x, mu, sigma, xi):
+    """P(Y > x) for Y ~ GEV(mu, sigma, xi), elementwise (0 above an upper end point, 1 below a
+    lower one)."""
+    z = (x - mu) / sigma
+    small = np.abs(xi) < 1e-6
+    xs = np.where(small, 1.0, xi)
+    a = 1.0 + xs * z
+    with np.errstate(all="ignore"):
+        t = np.where(small, np.exp(-z), np.where(a > 0, np.maximum(a, 1e-300) ** (-1.0 / xs),
+                                                 np.where(xs > 0, np.inf, 0.0)))
+    return -np.expm1(-t)
+
+
+def predictive_quantile(mu, sigma, xi, p, lo, hi, iters=50):
+    """p-quantile of the predictive distribution: mixture over draws (rows) of GEV(mu, sigma, xi),
+    separately for each column (year). lo, hi: brackets per column (e.g. the smallest and largest
+    of the draws' own p-quantiles, between which the mixture quantile always lies)."""
+    lo, hi = np.array(lo, float), np.array(hi, float)
+    target = 1.0 - p
+    for _ in range(iters):
+        mid = 0.5 * (lo + hi)
+        above = gev_survival(mid[None, :], mu, sigma, xi).mean(axis=0) > target
+        lo = np.where(above, mid, lo)
+        hi = np.where(above, hi, mid)
+    return 0.5 * (lo + hi)
+
+
+def predictive_summaries(mu, sigma, xi, q, probs, chains):
+    """From draws mu, sigma, xi (D, T) and the draws' quantiles q (D, n_p, T):
+    pred (n_p, T) predictive quantiles; pred_chain (chains, n_p) the final-year predictive
+    quantile from each chain's draws alone (Monte Carlo error); pred_exc (len(PRED_EXC_Q), n_p, T)
+    quantiles over draws of each draw's exceedance probability of the predictive level."""
+    D, T = mu.shape
+    n_p = len(probs)
+    pred = np.empty((n_p, T))
+    pred_exc = np.empty((len(PRED_EXC_Q), n_p, T))
+    pred_chain = np.empty((chains, n_p))
+    per = D // chains
+    for i, p in enumerate(probs):
+        pred[i] = predictive_quantile(mu, sigma, xi, p, q[:, i].min(axis=0), q[:, i].max(axis=0))
+        S = gev_survival(pred[i][None, :], mu, sigma, xi)
+        pred_exc[:, i] = np.quantile(S, PRED_EXC_Q, axis=0)
+        for c in range(chains):
+            sl = slice(c * per, (c + 1) * per)
+            pred_chain[c, i] = predictive_quantile(mu[sl, -1:], sigma[sl, -1:], xi[sl, -1:], p,
+                                                   q[sl, i, -1:].min(axis=0),
+                                                   q[sl, i, -1:].max(axis=0))[0]
+    return pred, pred_chain, pred_exc
+
+
 @dataclass
 class TVPFit:
     probs: tuple
@@ -81,6 +140,10 @@ class TVPFit:
     max_rhat: float
     min_ess: float
     seconds: float
+    pred: np.ndarray = None        # (n_p, T) posterior predictive quantiles
+    pred_chain: np.ndarray = None  # (chains, n_p) final-year predictive quantile, chain by chain
+    pred_exc: np.ndarray = None    # (len(PRED_EXC_Q), n_p, T) draws' exceedance at pred
+    last_draws: np.ndarray = None  # (D, 3) final-year draws of mu, sigma, xi
 
 
 def fit_tvp(X, probs=PROBS, chains=4, warmup=1000, samples=1000, seed=1, adapt_delta=0.95,
@@ -101,7 +164,8 @@ def fit_tvp(X, probs=PROBS, chains=4, warmup=1000, samples=1000, seed=1, adapt_d
                              adapt_delta=adapt_delta, output_dir=tmp, show_progress=False,
                              show_console=False)
         q = fit.stan_variable("q")                       # (draws, n_p, T)
-        par = np.stack([fit.stan_variable(v).mean(axis=0) for v in ("mu", "sigma", "xi")])
+        draws = [fit.stan_variable(v) for v in ("mu", "sigma", "xi")]    # each (draws, T)
+        par = np.stack([d.mean(axis=0) for d in draws])
         div = int(np.sum(fit.method_variables()["divergent__"]))
         summ = fit.summary(percentiles=(50,), sig_figs=6)
         rows = summ.index.str.match(r"^(mu|sigma|xi|q)\[")
@@ -111,7 +175,10 @@ def fit_tvp(X, probs=PROBS, chains=4, warmup=1000, samples=1000, seed=1, adapt_d
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     lo, med, hi = np.quantile(q, [0.05, 0.5, 0.95], axis=0)
-    return TVPFit(tuple(probs), q.mean(axis=0), med, lo, hi, par, div, rhat, ess, time.time() - t0)
+    pred, pred_chain, pred_exc = predictive_summaries(*draws, q, probs, chains)
+    last = np.stack([d[:, -1] for d in draws], axis=1)
+    return TVPFit(tuple(probs), q.mean(axis=0), med, lo, hi, par, div, rhat, ess, time.time() - t0,
+                  pred, pred_chain, pred_exc, last)
 
 
 # ---------------------------------------------------------------------------
@@ -343,14 +410,21 @@ def _job(args):
     X = _panel(family, change, k, T, phi, r, seed, rep)
     with np.errstate(all="ignore"):
         stats = panel_statistics(X, _start(X))
+    chains = mcmc.get("chains", 4)
+    pred = dict(pred_q=np.full((len(PROBS), T), np.nan),
+                pred_chain=np.full((chains, len(PROBS)), np.nan),
+                pred_exc=np.full((len(PRED_EXC_Q), len(PROBS), T), np.nan),
+                last_draws=np.full((chains * mcmc.get("samples", 1000), 3), np.nan))
     try:
         f = fit_tvp(X, seed=int(seed % 2**31) + rep, **mcmc)
         tvp = np.stack([f.q_mean, f.q_median, f.q_lo, f.q_hi])
         diag = np.array([f.divergences, f.max_rhat, f.min_ess, f.seconds])
+        pred = dict(pred_q=f.pred, pred_chain=f.pred_chain, pred_exc=f.pred_exc,
+                    last_draws=f.last_draws)
     except Exception:                                   # a failed Stan run is recorded as NaN
         tvp = np.full((4, len(PROBS), T), np.nan)
         diag = np.full(4, np.nan)
-    return rep, stats, mle_quantile_paths(stats, T), tvp, diag
+    return rep, stats, mle_quantile_paths(stats, T), tvp, diag, pred
 
 
 @dataclass
@@ -367,6 +441,11 @@ class ScenarioResult:
     tvp_q: np.ndarray        # (N, 4, n_p, T)  posterior mean, median, 5%, 95%
     diag: np.ndarray         # (N, 4)  divergences, max R-hat, min bulk ESS, seconds
     prior: str = "mw"        # key of PRIORS used for the TVP fits
+    # posterior predictive output (runs from 2026-11-03 on; None in older files)
+    pred_q: np.ndarray = None      # (N, n_p, T) predictive quantiles X*_p(t)
+    pred_chain: np.ndarray = None  # (N, chains, n_p) final-year predictive quantile per chain
+    pred_exc: np.ndarray = None    # (N, len(PRED_EXC_Q), n_p, T) draws' exceedance at X*_p(t)
+    last_draws: np.ndarray = None  # (N, D, 3) final-year posterior draws of mu, sigma, xi
 
 
 def simulate_scenario(family, change, k=1, T=85, phi=0.5, r=0, N=100, seed=1, workers=None,
@@ -381,25 +460,35 @@ def simulate_scenario(family, change, k=1, T=85, phi=0.5, r=0, N=100, seed=1, wo
     mle_q = np.full((N, 3, len(PROBS), T), np.nan)
     tvp_q = np.full((N, 4, len(PROBS), T), np.nan)
     diag = np.full((N, 4), np.nan)
+    pred = {}
     if workers == 1:
         parts = map(_job, jobs)
     else:
         from . import critical_values as cv
         ex = ProcessPoolExecutor(max_workers=workers, initializer=cv._single_thread)
         parts = ex.map(_job, jobs)
-    for i, st, mq, tq, dg in parts:
+    for i, st, mq, tq, dg, pr in parts:
         stats[i], mle_q[i], tvp_q[i], diag[i] = st, mq, tq, dg
+        for key, v in pr.items():
+            if key not in pred:
+                pred[key] = np.full((N,) + v.shape, np.nan)
+            pred[key][i] = v
     if workers != 1:
         ex.shutdown()
     return ScenarioResult(family, change, k, T, phi, r, seed, stats, mle_q, tvp_q, diag,
-                          mcmc.get("prior", "mw"))
+                          mcmc.get("prior", "mw"), **pred)
 
 
 def save(res: ScenarioResult, path):
     np.savez_compressed(path, stats=res.stats, mle_q=res.mle_q.astype(np.float32),
                         tvp_q=res.tvp_q.astype(np.float32), diag=res.diag, family=res.family,
                         change=res.change.label, k=res.k, T=res.T, phi=res.phi, r=res.r,
-                        seed=res.seed, probs=np.array(PROBS), prior=res.prior)
+                        seed=res.seed, probs=np.array(PROBS), prior=res.prior,
+                        **{key: getattr(res, key).astype(np.float32) for key in PRED_FIELDS
+                           if getattr(res, key) is not None})
+
+
+PRED_FIELDS = ("pred_q", "pred_chain", "pred_exc", "last_draws")
 
 
 def load(path):
@@ -408,7 +497,8 @@ def load(path):
     return ScenarioResult(str(d["family"]), pa.Change(knob, shape, float(amount)), int(d["k"]),
                           int(d["T"]), float(d["phi"]), int(d["r"]), int(d["seed"]), d["stats"],
                           d["mle_q"].astype(float), d["tvp_q"].astype(float), d["diag"],
-                          str(d["prior"]) if "prior" in d else "mw")
+                          str(d["prior"]) if "prior" in d else "mw",
+                          **{key: d[key].astype(float) for key in PRED_FIELDS if key in d})
 
 
 def score_rows(res: ScenarioResult, cache_dir=None, extra=None):
@@ -432,6 +522,8 @@ def score_rows(res: ScenarioResult, cache_dir=None, extra=None):
         ests.update({name: extra[:, i] for i, name in enumerate(EXTRA_NAMES)})
     ests["tvp_mean"] = res.tvp_q[:, 0]
     ests["tvp_median"] = res.tvp_q[:, 1]
+    if res.pred_q is not None:
+        ests["tvp_pred"] = res.pred_q
     diag = res.diag
     ok_tvp = np.isfinite(diag[:, 0])
     rows = []

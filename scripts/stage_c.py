@@ -133,9 +133,15 @@ def main():
                    help="prior scales of the random walks (default: the authors')")
     p.add_argument("--rescore", action="store_true",
                    help="only rescore saved scenarios (adds the further MLE estimators)")
+    p.add_argument("--replay", action="store_true",
+                   help="refit every scenario saved in data/output/stage_c with its own settings "
+                        "and seeds, writing to data/output/stage_c_pred with the posterior "
+                        "predictive output added (and checking the old summaries reproduce)")
     args = p.parse_args()
     if hasattr(os, "nice") and args.nice > 0:
         os.nice(args.nice)
+    if args.replay:
+        return replay(args)
     OUT.mkdir(parents=True, exist_ok=True)
     for T in args.T:
         for k in args.k:
@@ -168,6 +174,45 @@ def main():
                                   f"{100 * r.get('exc_gt2x_last', float('nan')):.0f}% of panels"
                                   + (f", 90% CI coverage {r['cover90_last']:.2f}"
                                      if "cover90_last" in r else ""), flush=True)
+
+
+PRED_OUT = ROOT / "data" / "output" / "stage_c_pred"
+
+
+def _replay_order(res):
+    """Most-used designs first: k = 1 at 85, 45, 30 years, then 3 values per year, the tight
+    prior and phi = 0."""
+    design = (res.k, res.prior != "mw", res.phi != 0.5)
+    return (design, -res.T)
+
+
+def replay(args):
+    import numpy as np
+    PRED_OUT.mkdir(parents=True, exist_ok=True)
+    old = []
+    for path in sorted(OUT.glob("*.npz")):
+        if path.name.startswith("extra_"):
+            continue
+        old.append((path, stage_c.load(path)))
+    old.sort(key=lambda pr: _replay_order(pr[1]))
+    print(f"{len(old)} scenarios, {sum(r.stats.shape[0] for _, r in old)} fits", flush=True)
+    for path, prev in old:
+        out = PRED_OUT / path.name
+        if out.exists():
+            res = stage_c.load(out)
+            print(f"{out.name}: reused", flush=True)
+        else:
+            t0 = time.time()
+            res = stage_c.simulate_scenario(prev.family, prev.change, k=prev.k, T=prev.T,
+                                            phi=prev.phi, r=prev.r, N=prev.stats.shape[0],
+                                            seed=prev.seed, workers=args.workers,
+                                            mcmc=dict(prior=prev.prior))
+            stage_c.save(res, out)
+            dq = np.nanmax(np.abs(res.tvp_q[:, 1] - prev.tvp_q[:, 1]))
+            print(f"{out.name}: {res.stats.shape[0]} fits in {time.time() - t0:.0f} s; "
+                  f"max change in posterior median vs the earlier run {dq:.2g}", flush=True)
+        extra = stage_c.extra_estimates(res, workers=args.workers or 4, cache_dir=OUT)
+        write_rows(stage_c.score_rows(res, cache_dir=CACHE, extra=extra))
 
 
 if __name__ == "__main__":
