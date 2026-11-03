@@ -23,6 +23,14 @@
 \section*{Summary}
 
 \paragraph{In brief.}
+\emph{Questions and approach.} We asked three questions about the methods of M\"uller and Watson
+(2024) for extremes that change over time: how reliably they detect a change, how accurately they
+estimate the current 1-in-100-year level, and what happens when the model of the change is wrong.
+To answer them against a known truth, we generated synthetic daily records of 30 to 150 years from
+four distributions (temperature-like, precipitation-like, heavy-tailed and bounded), changed their
+mean, spread or tail in known ways, and applied the tests and estimators to the annual maxima:
+thousands of records per case for the tests and 100 per case for the estimates.
+
 \emph{Detection.} The parameter-constancy (Nyblom) test of M\"uller and Watson (2024) is a reliable
 detector of change in annual maxima: with one value per year its false-alarm rate stays at
 4--6\% for every parent distribution, record length and level of day-to-day persistence we tried.
@@ -33,25 +41,20 @@ records from a normal parent but in 24\% from a skewed, precipitation-like (gamm
 
 \emph{Quantification.} Saying how large the change is, or what the current 1-in-100-year level
 is, is much harder. Even with no change and the correct model, the 99\% annual-maximum level
-estimated from 85 years understates the true risk at least twofold in 27\% of records (44\% with
-30 years). When extremes are changing, a GEV with a linear trend in location comes close to this
-floor (30\% at 85 years), and no more flexible method, including the authors' Bayesian
-random-walk model, does better on average.
+estimated from 85 years is badly off in 44\% of records, in the sense that its true chance of being
+exceeded is more than twice or less than half the nominal 1\%: it understates the risk in 27\% of
+records and overstates it in 18\%. When extremes are changing, the methods we tested, including the
+authors' Bayesian random-walk model, are badly off in 51--59\% of 85-year records and in about
+three-quarters of 30-year records. The Bayesian model is no more accurate than a simple linear trend.
 
-\emph{Using the wrong model.} There is no single best model for the change. Whether to model it as a
-function of time or of the mean state depends on which actually drives it, and that is usually
-unknown. With 85 years, using the wrong driving variable raises the share of records in which the
-current 99\% level misses the true risk by more than a factor of 2 from 65\% to 75\% when the width
-and tail follow an accelerating mean (a linear time trend cannot follow it), and from 55\% to 69\%
-when the width changes but the mean does not (a mean-state model cannot see it). When the mean
-rises at an increasing rate, following its path matters more than getting right what drives the width, so the
-mean-state model loses little even when the width in fact changes on its own time course. Fitting a
-change that is not there is about as costly: with no change, the share rises from 44\% for the
-constant fit to 55--60\% for the location + width and covariate models. Averaging the candidate
-models with Akaike weights is a robust way out: at 85 years the
-average is never more than 4 points worse than the best single model for the true process, while
-each single model is 11--30 points worse for some process. With 30 years, sampling noise dominates
-and no choice of model helps much.
+\emph{Using the wrong model.} A change in extremes can be modelled as a function of time or as a
+function of the mean state (such as the local mean temperature), and which is physically right is
+usually unknown. Using the wrong one makes the estimated level clearly less reliable when the mean
+changes nonlinearly in time, or when the spread of the distribution changes while the mean does not,
+and the record itself rarely shows which model is right. Averaging the candidate models, each
+weighted by how well it fits the data, comes close to the best single model whatever the truth, and
+is the safest choice when the driver is unknown. With 30 years of data, sampling noise dominates and
+the choice of model matters little.
 
 \paragraph{Extended summary.}
 We reimplemented the time-varying-extremes methods of M\"uller and Watson (2024) in Python,
@@ -68,17 +71,22 @@ linear shift in location, and much more powerful against changes in tail shape. 
 ten largest values per year adds power but, with strong day-to-day persistence, raises false
 alarms to 20--50\% unless the extremes are declustered.
 
-Detecting a change is not the same as measuring it. We scored a dozen estimators on a question
-that matters for risk assessment: if the estimated 99\% annual-maximum level for the most recent
-year is taken at face value, how often is it really exceeded? An ideal estimator gives 1\%. The
-dominant source of error is not the change but the difficulty of estimating a 1-in-100 level from
-a few decades of annual maxima: with no change and a correctly specified model, 27\% of 85-year
-records understate the risk at least twofold and 18\% overstate it at least twofold. Against this
-floor, a linear trend in location is the most reliable simple estimator (30\% understated at
-85 years). The authors' Bayesian random-walk model is competitive for 30- and 45-year records but
-worse for 85-year records (39\%), it shrinks estimated changes toward zero, and its 90\% credible
-intervals, while they cover the truth, are 1.3 to 3 times wider than the actual errors. With three
-values per year, 10--12\% of its fits fail to converge under the authors' prior.
+Detecting a change is not the same as measuring it. We scored more than a dozen estimators on a
+question that matters for risk assessment: if the estimated 99\% annual-maximum level for the most
+recent year is taken at face value, what is the true probability that it is exceeded? An ideal
+estimator gives 1\%. We count an estimate as a miss when that probability is more than 2\% (risk
+understated at least twofold) or less than 0.5\% (overstated at least twofold), and report the two
+directions separately, because their consequences differ and estimators trade one for the other.
+The dominant source of error is not the change but the difficulty of estimating a 1-in-100 level
+from a few decades of annual maxima: with no change and a correctly specified model, 44\% of
+85-year records miss (27\% understate, 18\% overstate). Against this floor, a linear trend in
+location or in location and width misses 56\%, and an AIC-weighted average of constant, trend and
+mean-state models does best (51\%). The authors' Bayesian random-walk model misses 59\%, erring more
+often toward understatement; it shrinks estimated changes toward zero, and its 90\% credible
+intervals, while they cover the truth, are 1.3 to 3 times wider than the actual errors. With 30 or
+45 years all these methods are within a few points of each other and of the no-change floor (about
+70\%). With three values per year, 10--12\% of the Bayesian fits fail to converge under the
+authors' prior.
 
 Which model is right depends on the physical process, and our tests show what happens when the
 model is wrong. We compared models of the same complexity that differ only in their driving
@@ -88,7 +96,9 @@ models miss the current risk by more than a factor of 2 in 75--83\% of 85-year r
 for the mean-state model. When the width changes while the mean stays constant, the mean-state model
 sees nothing and misses 69\% against 55\%. When the mean moves linearly in time the two coincide, and
 with 30 years every model misses 66--87\% of records, so the choice of driving variable is
-secondary to record length. When the mean rises at an increasing rate but the width and tail change linearly in time,
+secondary to record length. Fitting a change that is not there costs about as much: with no
+change, the location + width and covariate models miss 55--60\% against 44\% for a constant fit.
+When the mean rises at an increasing rate but the width and tail change linearly in time,
 the mean-state model, now with the wrong driver, still does slightly better (64\% against 68\%),
 because missing the curvature of the mean costs more than misplacing the width. The data rarely
 reveal the driver: AIC cannot tell a width change from a mean change. But an AIC-weighted average of
@@ -248,10 +258,14 @@ each record's estimated level in the last year,
 \pi=\Pr\big(M_T>\hat X_{0.99}(T)\big),
 \]
 computed from the exact distribution of the last year's annual maximum $M_T$. An ideal estimator
-has $\pi=1\%$. We report its median over records and the shares of records with $\pi>2\%$ (risk
-understated at least twofold) and $\pi<0.5\%$ (overstated at least twofold). This score is
-comparable across parents and penalizes errors by their consequence for risk rather than by their
-size in data units. We also report the error of the estimated change $\hat X_{0.99}(T)-\hat
+has $\pi=1\%$. We report its median over records and count an estimate as a \emph{miss} when
+$\pi>2\%$ (risk understated at least twofold) or $\pi<0.5\%$ (overstated at least twofold). The main
+score is the share of records missed in either direction, always given with its two parts. The two
+errors have different consequences: understating the risk leaves people unprepared, overstating it
+leads to over-design and false alarms. Estimators trade one for the other, so neither alone is a fair
+summary, and when the true change has a known direction a one-sided score rewards models that err in
+that direction. This score is comparable across parents and penalizes errors by their consequence
+for risk rather than by their size in data units. We also report the error of the estimated change $\hat X_{0.99}(T)-\hat
 X_{0.99}(1)$ and, for the Bayesian model, the coverage and width of its 90\% credible intervals.
 
 \subsection{Monte Carlo design}
@@ -417,9 +431,9 @@ case, one figure per parent, comparing the location trend (blue) with the Bayesi
 \subsection{The noise floor}
 
 Much of the error has nothing to do with change. With no change and the correctly specified
-constant model, the estimated $\Xp$ understates the risk at least twofold in 27\% of 85-year
-records and overstates it at least twofold in 18\%; for 30-year records the shares are 44\% and
-27\%, and for 45-year records 38\% and 30\%. The median exceedance probability is 1.3\% rather than
+constant model, the estimated $\Xp$ misses the risk by more than a factor of 2 in 44\% of 85-year
+records: it understates it at least twofold in 27\% and overstates it at least twofold in 18\%. For
+45-year records 68\% miss (38\% and 30\%), and for 30-year records 71\% (44\% and 27\%). The median exceedance probability is 1.3\% rather than
 1\%: the sampling distribution of an estimated high quantile is skewed, so the typical estimate
 is a little low. This floor is the yardstick for the results below. An estimator that allows for
 change should not be expected to beat it, and it pays for its flexibility with extra variance when
@@ -432,26 +446,38 @@ over the standard cases (20 cases including the four with no change) and the cov
 (7 cases).
 
 \begin{itemize}
-\item \textbf{The location trend is the most reliable simple choice} for the standard cases: at
-  85 years it understates the risk twofold in 30\% of records, close to the 27\% floor. Ignoring
-  change (constant, 46\%) or using only the last 30 years (49\%) is much worse.
-\item \textbf{More flexible time trends do not help on average.} Adding a width trend gives 33\%
-  and trends in all three parameters 42\%; the gain where the width or tail really changes is
-  outweighed by the extra variance elsewhere.
-\item \textbf{The Bayesian model is competitive for short records but not for long ones}: 36\% at
-  30 years (against 40\% for the location trend), 34\% at 45 years, but 39\% at 85 years, which is
-  $10\pm3$ points worse than the location trend. Its posterior mean is a poor point estimate: the
-  posterior of a high quantile is right-skewed, so the mean overstates the level (median
-  exceedance 0.5\% at 85 years, and below 0.01\% at 30 years, where the posterior of a high
-  quantile has a very long right tail).
-\item \textbf{Three values per year help modestly} (location trend 28\% at 85 years, Bayesian
-  31\%), when declustered. Figure~\ref{fig:pk} shows the bands narrowing a little, and the
-  Bayesian median following the $t$ tail change more closely; it also shows the unconverged
-  Bayesian fits for the beta parent (Section~\ref{sec:bayes}) as a wide upper band early in the
-  85-year record.
+\item \textbf{Estimators differ as much in the direction of their errors as in how often they
+  miss.} At 85 years the location trend understates the risk twofold in 30\% of records and
+  overstates it in 26\%; the Bayesian median understates in 39\% and overstates in 20\%. The
+  Bayesian posterior mean is the extreme case: it rarely understates (20\%) but overstates in 51\%.
+  Below we rank by the total and give the split; Table~\ref{tab:headline} has both for every
+  estimator.
+\item \textbf{At 85 years an average of simple models does best} over the standard cases: the
+  AIC-weighted average of the constant, location-trend, location + width and covariate models misses
+  51\% of records (30\% understated, 20\% overstated), $5.5\pm1.0$ points fewer than the location trend
+  or the location + width trend (both 56\%). Ignoring change (constant, 65\%) or using only the last
+  30 years (65\%) is much worse, and trends in all three parameters (70\%) pay for their flexibility
+  with extra variance.
+\item \textbf{The Bayesian model is about as accurate as the simple trends}: it misses 75\%, 70\% and
+  59\% of records at 30, 45 and 85 years, against 73\%, 69\% and 56\% for the location trend (paired
+  differences of 1--3 points, $\pm1.2$). Its errors lean toward overstatement at 30 years (39\%
+  overstated against 33\%) and toward understatement at 85 years (39\% understated against 30\%).
+  Its posterior mean is a poor point estimate: the posterior of a high quantile is right-skewed, so
+  the mean overstates the level (median exceedance 0.5\% at 85 years, and below 0.01\% at 30 years,
+  where the posterior has a very long right tail).
+\item \textbf{With 30 or 45 years the method hardly matters}: the location trend, location + width
+  trend, covariate model, AIC choices and Bayesian model miss 73--76\% of 30-year and 68--72\% of
+  45-year records, against no-change floors of 71\% and 68\%.
+\item \textbf{Three values per year help} when declustered: at 85 years the AIC-weighted average
+  misses 44\% and the location + width trend 45\% (from 51\% and 56\%), the location trend 51\% and
+  the Bayesian model 53\%. For the trend models and the average both kinds of miss fall; the
+  Bayesian model gains on understatement only. Figure~\ref{fig:pk} shows the
+  bands narrowing a little, and the Bayesian median following the $t$ tail change more closely; it
+  also shows the unconverged Bayesian fits for the beta parent (Section~\ref{sec:bayes}) as a wide
+  upper band early in the 85-year record.
 \item \textbf{Record length matters more than the method.} Every estimator is worse at 30 years
-  than at 85, and the spread between the best and worst sensible methods (about 10 points) is
-  smaller than the floor itself.
+  than at 85, and the spread between these methods (3--4 points at 30 and 45 years, 8 at 85) is
+  much smaller than the floor itself.
 \end{itemize}
 
 \begin{figure}[H]
@@ -466,9 +492,9 @@ factor 2 of the ideal 1\%.}
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig07_heatmap.pdf}
-\caption{Share of records in which the estimated 99\% level understates (left) or overstates
-(right) the true risk at least twofold, pooled over cases, by design. Columns marked * are the
-covariate-model cases.}
+\caption{Share of records in which the estimated 99\% level misses the true risk by more than a
+factor of 2 in either direction (left), and its two parts: risk understated (middle) or overstated
+(right) at least twofold, pooled over the standard and the covariate-model cases, by record length.}
 \label{fig:heatmap}
 \end{figure}
 
@@ -482,11 +508,12 @@ covariate-model cases.}
 \begin{table}[H]
 \centering
 \scriptsize
-\setlength{\tabcolsep}{3.5pt}
+\setlength{\tabcolsep}{2.3pt}
 \input{tables/headline.tex}
 \caption{Accuracy of the estimated 99\% level in the last year: median true exceedance
-probability (\%, ideal 1) and shares of records (\%) with the risk understated ($>2\%$) or
-overstated ($<0.5\%$) at least twofold.}
+probability (\%, ideal 1); share of records (\%) in which the level misses the true risk by more
+than a factor of 2 either way (bold); and its two parts, risk understated ($>2\%$) or overstated
+($<0.5\%$) at least twofold.}
 \label{tab:headline}
 \end{table}
 
@@ -538,12 +565,12 @@ two processes differ only in how the distribution gets from its first state to i
 about 4\% between the two.
 
 \paragraph{Score.}
-The tail changes here all lower the 99\% level and the mean changes all raise it, so the one-sided
-score of Section~\ref{sec:quant} favours models that err in the direction of the change: a constant
-fit, for instance, never understates the risk after a tail change. For this comparison we therefore
-count the records in which the estimated level misses the true risk by more than a factor of 2
-\emph{in either direction} (true exceedance probability above 2\% or below 0.5\%). With no change and
-the correct model, this happens in 44\% of 85-year records and 71\% of 30-year records.
+We use the two-sided score of Section~\ref{sec:quant}: the share of records in which the estimated
+level misses the true risk by more than a factor of 2 \emph{in either direction} (true exceedance
+probability above 2\% or below 0.5\%). A one-sided score would mislead here, because the tail
+changes all lower the 99\% level and the mean changes all raise it: a constant fit, for instance,
+never understates the risk after a tail change. With no change and the correct model, 44\% of
+85-year records and 71\% of 30-year records miss.
 
 \begin{figure}[H]
 \centering
@@ -614,10 +641,10 @@ and after a tail change 69\% against 59\%. Averaging the four models with Akaike
 (Table~\ref{tab:wrong}). At 85 years it is within 4 points of the best single model for every true
 process, and when the mean moves linearly it beats all of them (46\% against 49\% for the best). By
 contrast, every single model, including the Bayesian one, is 11--30 points worse than the best for
-at least one process. On the one-sided score of Section~\ref{sec:quant} the average matches the
-location trend over the standard cases (30\% understated at 85 years, Table~\ref{tab:headline}), and
-in the covariate-model cases it lies between the location + width trend and the covariate model
-(52\% against 60\% and 45\%). With 30 and 45 years the differences between all the choices are small,
+at least one process. Over the standard cases it is also the best estimator at 85 years (51\%
+missed against 56\% for the location trend, Section~\ref{sec:quant}), and in the covariate-model
+cases it is close to the covariate model (64\% against 62\%, and 69\% for the location + width
+trend). With 30 and 45 years the differences between all the choices are small,
 and the average is within 6 points of the best model throughout.
 
 \paragraph{What to do when we do not know.}
@@ -663,13 +690,14 @@ truth in black.}
 
 \paragraph{The covariate-model cases in detail.}
 In these cases the width and tail of the daily distribution change with the mean, and the mean
-itself rises along an accelerating path. On the one-sided score of Section~\ref{sec:quant}, at 85
-years the location trend understates the current risk twofold in 71\% of records, the location +
-width trend in 60\% and the Bayesian model in 57\%; the covariate model does markedly better (45\%),
-close to its oracle version with the true mean path (43\%). Two things contribute: the covariate
+itself rises along an accelerating path. At 85 years the location trend misses the current risk by
+more than a factor of 2 in 74\% of records, almost all by understating it (71\%); the location +
+width trend and the Bayesian model miss 69\% (60\% and 57\% understated). The covariate model does
+clearly better (62\%: 45\% understated, 16\% overstated), as well as its oracle version with the true
+mean path (63\%). Two things contribute: the covariate
 captures the acceleration, which a straight line in time cannot, and it is estimated from all daily
 values, not only the extremes, so it is much less noisy than the extremes themselves. Letting the
-tail index also depend on the covariate makes things worse (57\%), because the tail index then
+tail index also depend on the covariate makes things worse (80\%), because the tail index then
 follows the noise in the covariate.
 
 Figures~\ref{fig:pwarm} and \ref{fig:pwet} show the paths. The covariate model (yellow) follows
@@ -728,13 +756,14 @@ by at most 2 points.
 \paragraph{Prior sensitivity.}
 Shrinking the random-walk scales for $\xi$, $\alpha$ and $s$ to 0.25 nearly eliminates the
 convergence problems (R-hat $\le1.05$ in every fit, median 1--6 divergences). It improves accuracy
-slightly at 85 years (35\% against 39\% understated) and leaves 45 years unchanged (34\%), and it
-brings interval coverage closer to nominal (93--98\%). See Appendix Figure~\ref{fig:prior}.
+slightly at 85 years (56\% of records missed against 59\%, mostly because fewer are understated:
+35\% against 39\%), leaves 45 years unchanged (70\%), and brings interval coverage closer to nominal (93--98\%). See Appendix Figure~\ref{fig:prior}.
 Figure~\ref{fig:pprior} shows the cost: the tighter prior narrows the bands, but it also makes the
 paths stiffer, so for the $t$ tail change the median follows less of the early, high values.
 Figure~\ref{fig:ppriorcov} compares both priors with the covariate model in the covariate-model
-cases. There the tighter prior is slightly worse (60\% understated at 85 years against 57\%, and 45\%
-for the covariate model), and its intervals cover the truth in only 88\% of records (80--92\% by
+cases. There the tighter prior misses as many records as the authors' (69\% at 85 years, against
+62\% for the covariate model), more of them by understating the risk (60\% against 57\%), and its
+intervals cover the truth in only 88\% of records (80--92\% by
 case), because its stiffer paths lag the acceleration at the end of the record.
 
 \begin{figure}[H]
@@ -767,8 +796,10 @@ interval, consistent with MCMC noise.
 \item The covariate-model cases are, by construction, cases where that model is right, and the
   covariate is the local mean of the same series. With an external covariate (e.g.\ global mean
   temperature) the gain would depend on how closely the local extremes follow it.
-\item 100 records per case gives standard errors of 3--4 percentage points on the pooled shares;
-  differences between estimators of less than about 5 points should not be over-interpreted.
+\item 100 records per case gives standard errors of 1--2 percentage points on shares pooled over
+  the standard cases and about 5 points for a single case. Estimators are compared on the same records,
+  so the differences between them are more precise (about $\pm1$ point pooled), but they depend on
+  which cases we chose; differences of a few points should not be over-interpreted.
 \item Our MCMC runs are shorter than the authors' (4 $\times$ 1,000 against 4 $\times$ 10,000
   draws). The accuracy of point estimates and interval coverage should be robust to this; the
   convergence failures with three values per year are not a matter of chain length.
@@ -816,8 +847,8 @@ form contains the true process.}
 \centering
 \includegraphics[width=\textwidth]{figures/figA1_prior_phi.pdf}
 \caption{Left: Bayesian model with the authors' prior and with a tighter prior on the random-walk
-scales. Right: shares of 85-year records with the risk understated twofold with correlated
-($\phi=0.5$) and independent daily values.}
+scales. Right: shares of 85-year records missed by more than a factor of 2 either way, with
+correlated ($\phi=0.5$) and independent daily values.}
 \label{fig:prior}
 \end{figure}
 

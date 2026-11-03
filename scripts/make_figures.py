@@ -203,6 +203,7 @@ def headline(rec):
                 under2x=("exc", lambda e: np.mean(e > 0.02)),
                 over2x=("exc", lambda e: np.mean(e < 0.005)),
                 within2x=("exc", lambda e: np.mean((e >= 0.005) & (e <= 0.02)))).reset_index()
+    out["off2x"] = out.under2x + out.over2x
     out.to_csv(RES / "stage_c_headline.csv", index=False, float_format="%.4f")
     return out
 
@@ -474,7 +475,7 @@ def fig_size(png):
 
 
 def fig_exceedance(rec, png):
-    names = ["const", "recent30", "trend", "trend2", "trend3", "cov2", "tvp_median"]
+    names = ["const", "recent30", "trend", "trend2", "trend3", "cov2", "aic_avg", "tvp_median"]
     panels = [("30 yr", "standard"), ("45 yr", "standard"), ("85 yr", "standard"),
               ("85 yr, 3/yr", "standard"), ("85 yr", "coupled")]
     fig, axes = plt.subplots(1, len(panels), figsize=(6.5, 3.0), sharey=True)
@@ -505,17 +506,19 @@ def fig_exceedance(rec, png):
 
 
 def fig_heatmap(head, png):
-    names = ["const", "recent30", "split", "trend", "trend2", "trend3", "cov2", "cov3",
+    names = ["const", "recent30", "split", "trend", "trend2", "trend3", "cov2", "cov3", "aic", "aic_avg",
              "tvp_median", "cov2_true"]
-    cols = [("30 yr", "standard"), ("45 yr", "standard"), ("85 yr", "standard"),
-            ("45 yr, 3/yr", "standard"), ("85 yr, 3/yr", "standard"), ("85 yr, indep. days", "standard"),
+    cols = [("30 yr", "standard"), ("45 yr", "standard"), ("85 yr", "standard"), ("85 yr, 3/yr", "standard"),
             ("30 yr", "coupled"), ("45 yr", "coupled"), ("85 yr", "coupled")]
+    collab = ["30", "45", "85", "85\n3/yr", "30", "45", "85"]
     from matplotlib.colors import LinearSegmentedColormap
     cmap = LinearSegmentedColormap.from_list("blue", ["#f4f8fd", "#cde2fb", "#86b6ef", "#3987e5",
                                                       "#1c5cab", "#0d366b"])
-    fig, axes = plt.subplots(1, 2, figsize=(6.5, 3.4), sharey=True)
-    for ax, (metric, title) in zip(axes, [("under2x", "Understated > 2× (true exceedance > 2%)"),
-                                         ("over2x", "Overstated > 2× (true exceedance < 0.5%)")]):
+    head = head.assign(off2x=head.under2x + head.over2x)
+    fig, axes = plt.subplots(1, 3, figsize=(6.5, 4.0), sharey=True)
+    for ax, (metric, title) in zip(axes, [("off2x", "Missed > 2× either way"),
+                                         ("under2x", "Understated > 2×\n(true exceedance > 2%)"),
+                                         ("over2x", "Overstated > 2×\n(true exceedance < 0.5%)")]):
         M = np.full((len(names), len(cols)), np.nan)
         for j, (dname, kind) in enumerate(cols):
             for i, n in enumerate(names):
@@ -528,85 +531,21 @@ def fig_heatmap(head, png):
                 if np.isfinite(M[i, j]):
                     ax.text(j, i, f"{100 * M[i, j]:.0f}", ha="center", va="center", fontsize=6.5,
                             color="white" if M[i, j] > 0.45 else INK)
-        ax.set_xticks(range(len(cols)), [d + ("*" if k == "coupled" else "") for d, k in cols],
-                      rotation=60, ha="right")
+        ax.set_xticks(range(len(cols)), collab, fontsize=6.5)
+        ax.tick_params(length=0)
         ax.set_title(title, fontsize=7.5)
         ax.grid(False)
         for sp in ax.spines.values():
             sp.set_visible(False)
-        ax.axvline(5.5, color="white", lw=3)
-    axes[0].set_yticks(range(len(names)), [EST[n][0] for n in names])
-    fig.text(0.5, -0.02, "Share of simulated records, %, pooled over cases. * covariate-model cases.",
+        ax.axvline(3.5, color="white", lw=3)
+        ax.text(1.5, len(names) + 0.9, "standard", ha="center", va="top", fontsize=6.5, color=INK2)
+        ax.text(5.0, len(names) + 0.9, "covariate", ha="center", va="top", fontsize=6.5, color=INK2)
+    axes[0].set_yticks(range(len(names)), [EST[n][0] for n in names], fontsize=7)
+    fig.text(0.5, 0.01, "Share of simulated records, %, pooled over cases. Columns: record length in years; "
+             "3/yr: three values per year.",
              ha="center", fontsize=7, color=INK2)
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0.04, 1, 1))
     _save(fig, "fig07_heatmap", png)
-
-
-def fig_change(rec, png):
-    names = ["trend", "trend2", "cov2", "tvp_median"]
-    s0 = rec[(rec.design == "85 yr") & rec.estimator.isin(names)]
-    ncase = [s0[s0.family == f].case.nunique() for f in FAMILIES]
-    fig, axes = plt.subplots(4, 1, figsize=(6.5, 8.2), gridspec_kw=dict(height_ratios=ncase))
-    for ax, fam in zip(axes, FAMILIES):
-        s = s0[s0.family == fam]
-        cs = list(dict.fromkeys(s.case))
-        for y, case in enumerate(cs):
-            sc = s[s.case == case]
-            for t, n in enumerate(names):
-                e = sc[sc.estimator == n].est_change.dropna()
-                yy = y + (t - 1.5) * 0.18
-                lo, med, hi = np.quantile(e, [0.1, 0.5, 0.9])
-                ax.plot([lo, hi], [yy, yy], color=EST[n][1], lw=1.1)
-                ax.plot(med, yy, "o", ms=3.5, color=EST[n][1], mec="white", mew=0.5)
-            ax.plot(sc.true_change.iloc[0], y, "|", ms=13, mew=2.2, color=INK, zorder=5)
-        ax.set_yticks(range(len(cs)), cs, fontsize=7)
-        ax.set_ylim(len(cs) - 0.5, -0.5)
-        ax.set_title(FAMILY[fam] + " parent", fontsize=8, loc="left")
-        ax.grid(axis="y", visible=False)
-        ax.axvline(0, color=AXIS, lw=0.8)
-    axes[-1].set_xlabel("Change in X$_{0.99}$, first year to last (baseline daily sd), 85-year records")
-    h = [Line2D([], [], marker="|", ls="", ms=9, mew=2, color=INK, label="Truth")]
-    h += [Line2D([], [], color=EST[n][1], marker="o", ms=3.5, lw=1.1, label=EST[n][0]) for n in names]
-    fig.legend(handles=h, loc="lower center", ncol=5, bbox_to_anchor=(0.5, -0.03))
-    fig.tight_layout(h_pad=0.8)
-    _save(fig, "fig08_change", png)
-
-
-def fig_bayes(rec, png):
-    s = rec[(rec.estimator == "tvp_median") & (rec.kind == "standard")]
-    designs = ["30 yr", "45 yr", "85 yr", "45 yr, 3/yr", "85 yr, 3/yr", "85 yr, indep. days",
-               "45 yr, tight prior", "85 yr, tight prior"]
-    fig, axes = plt.subplots(1, 2, figsize=(6.5, 2.8), sharey=True)
-    for y, dname in enumerate(designs):
-        sd = s[s.design == dname]
-        if not len(sd):
-            continue
-        for t, fam in enumerate(FAMILIES):
-            sf = sd[sd.family == fam]
-            yy = y + (t - 1.5) * 0.17
-            c = [BLUE, ORANGE, AQUA, YELLOW][t]
-            axes[0].plot(sf.covered.mean(), yy, "o", ms=4, color=c, mec="white", mew=0.5)
-            # interval width relative to the spread of the point estimate
-            if not len(sf):
-                continue
-            e = sf.err_last.to_numpy(float)
-            spread = np.nanquantile(e, 0.95) - np.nanquantile(e, 0.05)
-            axes[1].plot(sf.ci_width.median() / spread, yy, "o", ms=4,
-                         color=c, mec="white", mew=0.5)
-    axes[0].axvline(0.9, color=INK, lw=0.9)
-    axes[0].set_xlim(0.75, 1.0)
-    axes[0].set_xlabel("Coverage of the 90% interval for X$_{0.99}$, last year")
-    axes[1].axvline(1.0, color=INK, lw=0.9)
-    axes[1].set_xlabel("Interval width ÷ 5–95% range of errors")
-    axes[0].set_yticks(range(len(designs)), designs)
-    axes[0].invert_yaxis()
-    for ax in axes:
-        ax.grid(axis="y", visible=False)
-    h = [Line2D([], [], color=c, marker="o", ls="", ms=4, label=FAMILY[f])
-         for c, f in zip([BLUE, ORANGE, AQUA, YELLOW], FAMILIES)]
-    fig.legend(handles=h, loc="lower center", ncol=4, bbox_to_anchor=(0.55, -0.06))
-    fig.tight_layout()
-    _save(fig, "fig09_bayes_intervals", png)
 
 
 def fig_prior_phi(head, png):
@@ -631,17 +570,18 @@ def fig_prior_phi(head, png):
     ax.legend(loc="lower right")
     ax.grid(axis="y", visible=False)
     ax = axes[1]
-    names = ["const", "trend", "trend2", "cov2", "tvp_median"]
+    names = ["const", "trend", "trend2", "cov2", "aic_avg", "tvp_median"]
+    off = head.under2x + head.over2x
     for y, n in enumerate(names):
-        va = head[(head.design == "85 yr") & (head.kind == "standard") & (head.estimator == n)].under2x
-        vb = head[(head.design == "85 yr, indep. days") & (head.kind == "standard") & (head.estimator == n)].under2x
+        va = off[(head.design == "85 yr") & (head.kind == "standard") & (head.estimator == n)]
+        vb = off[(head.design == "85 yr, indep. days") & (head.kind == "standard") & (head.estimator == n)]
         if len(va) and len(vb):
             ax.plot([va.iloc[0], vb.iloc[0]], [y, y], color=EST[n][1], lw=1.2)
             ax.plot(va.iloc[0], y, "o", ms=4.5, color=EST[n][1], mec="white", mew=0.5)
             ax.plot(vb.iloc[0], y, "s", ms=4.5, color="white", mec=EST[n][1], mew=1.3)
     ax.set_yticks(range(len(names)), [EST[n][0] for n in names])
     ax.invert_yaxis()
-    ax.set_xlabel("Share of records with risk understated > 2×")
+    ax.set_xlabel("Share of records missed > 2× either way")
     ax.set_title("85 yr: correlated days φ = 0.5 (●) vs independent (□)", fontsize=7.5)
     ax.grid(axis="y", visible=False)
     fig.tight_layout()
@@ -828,26 +768,32 @@ def table_wrong_model(rec):
 # ---------------------------------------------------------------------------------------------
 # Tables
 # ---------------------------------------------------------------------------------------------
+TABLE_LABEL = {"trend2": "Loc. + width trend", "trend3": "All-param. trend", "cov2": "Mean-state cov.",
+               "cov3": "Cov., all param.", "cov2_true": "Cov., true mean", "cov3_true": "Cov., all, true mean",
+               "aic_avg": "AIC-weighted avg.", "tvp_median": "Bayes (median)", "tvp_mean": "Bayes (mean)"}
+
+
 def table_headline(head):
     designs = ["30 yr", "45 yr", "85 yr", "85 yr, 3/yr"]
-    lines = [r"\begin{tabular}{l" + "rrr" * len(designs) + "}", r"\toprule",
-             " & " + " & ".join(rf"\multicolumn{{3}}{{c}}{{{d}}}" for d in designs) + r" \\",
-             " ".join(rf"\cmidrule(lr){{{2 + 3 * i}-{4 + 3 * i}}}" for i in range(len(designs))),
-             "Estimator & " + " & ".join(["med.", r"$>$2\%", r"$<$0.5\%"] * len(designs)) + r" \\",
+    lines = [r"\begin{tabular}{l" + "rrrr" * len(designs) + "}", r"\toprule",
+             " & " + " & ".join(rf"\multicolumn{{4}}{{c}}{{{d}}}" for d in designs) + r" \\",
+             " ".join(rf"\cmidrule(lr){{{2 + 4 * i}-{5 + 4 * i}}}" for i in range(len(designs))),
+             "Estimator & " + " & ".join(["med.", "miss", r"$>$2\%", r"$<$0.5\%"] * len(designs)) + r" \\",
              r"\midrule"]
     for kind, title in [("standard", "Standard cases"), ("coupled", "Covariate-model cases")]:
-        lines.append(rf"\multicolumn{{{1 + 3 * len(designs)}}}{{l}}{{\emph{{{title}}}}} \\")
+        lines.append(rf"\multicolumn{{{1 + 4 * len(designs)}}}{{l}}{{\emph{{{title}}}}} \\")
         for n in TABLE_EST:
             cells = []
             for d in designs:
                 v = head[(head.design == d) & (head.kind == kind) & (head.estimator == n)]
                 if len(v):
                     r = v.iloc[0]
-                    cells += [f"{100 * r.exc_median:.2f}", f"{100 * r.under2x:.0f}", f"{100 * r.over2x:.0f}"]
+                    cells += [f"{100 * r.exc_median:.2f}", rf"\textbf{{{100 * (r.under2x + r.over2x):.0f}}}",
+                              f"{100 * r.under2x:.0f}", f"{100 * r.over2x:.0f}"]
                 else:
-                    cells += ["", "", ""]
+                    cells += ["", "", "", ""]
             if any(cells):
-                lines.append(f"{EST[n][0]} & " + " & ".join(cells) + r" \\")
+                lines.append(f"{TABLE_LABEL.get(n, EST[n][0])} & " + " & ".join(cells) + r" \\")
     lines += [r"\bottomrule", r"\end{tabular}"]
     TAB.mkdir(parents=True, exist_ok=True)
     (TAB / "headline.tex").write_text("\n".join(lines) + "\n")

@@ -284,25 +284,32 @@ data:
 
 Each estimator is fitted to the same simulated records (Stage B generator; 100 records per case)
 and scored on the *true* probability that its estimated 99% annual-maximum level for the last
-year is exceeded (ideal 1%). Pooled results are in `data/results/stage_c_headline.csv`, per-case
-results in `data/results/stage_c_summary.csv`, and the full write-up in the report. Main
-findings, for 85-year records with one value per year unless stated:
+year is exceeded (ideal 1%). An estimate *misses* when that probability is above 2% (risk
+understated at least twofold) or below 0.5% (overstated at least twofold); the main score is the
+share of records missed either way, reported with its two parts. Pooled results are in
+`data/results/stage_c_headline.csv`, per-case results in `data/results/stage_c_summary.csv`, and
+the full write-up in the report. Main findings, for 85-year records with one value per year unless
+stated:
 
-- **A noise floor dominates.** With no change and the correct constant model, the estimated
-  level understates the risk at least twofold in 27% of records (44% for 30 years) and overstates
-  it twofold in 18%.
-- **The location trend is the most reliable simple estimator**: 30% of records understated
-  twofold over the standard cases, against 46% for a constant fit, 49% for a fit to the last 30
-  years, 33% for a location + width trend and 42% for trends in all three parameters.
-- **The authors' Bayesian model** (posterior median) is competitive for 30–45 years (34–36%) but
-  worse for 85 years (39%). It shrinks estimated changes toward zero. Its 90% intervals cover
-  the truth 94–100% of the time, but are 1.3–3 times wider than the actual errors. With three
-  values per year, 10–12% of fits do not converge (R-hat > 1.5, mostly the bounded beta parent);
-  a tighter prior on the random-walk scales removes this.
-- **When width and tail move with the mean state** (covariate-model cases), the time-trend
-  methods understate the risk in 57–71% of records. A GEV with location and log scale linear in
-  a smoothed annual mean of all days (`cov2`, constant ξ) gets 45%, close to its oracle with the
-  true mean (43%). Letting ξ depend on the raw annual mean (`cov3`) is unstable.
+- **A noise floor dominates.** With no change and the correct constant model, 44% of records miss
+  (27% understated, 18% overstated); 68% for 45 years and 71% for 30 years.
+- **An AIC-weighted average of simple models is the most accurate estimator** over the standard
+  cases: 51% missed (30% understated, 20% overstated), against 56% for a location trend (30% / 26%)
+  or a location + width trend (33% / 23%), 65% for a constant fit or the last 30 years, and 70% for
+  trends in all three parameters.
+- **The authors' Bayesian model** (posterior median) is about as accurate as the simple trends:
+  75%, 70% and 59% missed at 30, 45 and 85 years, against 73%, 69% and 56% for the location trend,
+  erring toward understatement at 85 years (39% against 30%). Its posterior mean rarely
+  understates but overstates in 51% of records. It shrinks estimated changes toward zero. Its 90%
+  intervals cover the truth 94–100% of the time, but are 1.3–3 times wider than the actual errors.
+  With three values per year, 10–12% of fits do not converge (R-hat > 1.5, mostly the bounded beta
+  parent); a tighter prior on the random-walk scales removes this.
+- **With 30 or 45 years the method hardly matters**: all the sensible estimators miss 73–76% and
+  68–72% of records, close to the no-change floor.
+- **When width and tail move with the mean state** (covariate-model cases), the time-trend methods
+  miss 69–74% of records, mostly by understating the risk. A GEV with location and log scale
+  linear in a smoothed annual mean of all days (`cov2`, constant ξ) misses 62%, as does its oracle
+  with the true mean (63%). Letting ξ depend on the raw annual mean (`cov3`) is unstable.
 - **Using the wrong model.** No model is right for every physical process, so we classified the
   cases by true process and scored every model on all of them (two-sided: the share of records
   in which the estimate misses the true risk by more than a factor of 2 either way; 44% with no
