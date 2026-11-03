@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "output" / "stage_c"
 CACHE = ROOT / "data" / "output" / "stage_b"           # cached annual-max distributions
 SUMMARY = ROOT / "data" / "results" / "stage_c_summary.csv"
-KEY = ("family", "knob", "shape", "amount", "k", "T", "phi", "r")
+KEY = ("family", "knob", "shape", "amount", "k", "T", "phi", "r", "prior")
 
 # One change of each kind per family, sized to be detectable about half to most of the time at
 # T = 85, k = 1 (Stage B).
@@ -63,11 +63,13 @@ def coupled_scenarios(family):
     return [pa.NULL] + [pa.Change(*c) for c in COUPLED.get(family, [])]
 
 
-def path_for(family, ch, k, T, phi, r):
-    return OUT / f"{family}_{ch.knob}_{ch.shape}_{ch.amount:g}_k{k}_T{T}_phi{phi:.2f}_r{r}.npz"
+def path_for(family, ch, k, T, phi, r, prior="mw"):
+    tag = "" if prior == "mw" else f"_prior-{prior}"
+    return OUT / f"{family}_{ch.knob}_{ch.shape}_{ch.amount:g}_k{k}_T{T}_phi{phi:.2f}_r{r}{tag}.npz"
 
 
 def _key(row):
+    row = {"prior": "mw", **{c: v for c, v in row.items() if v != ""}}   # old rows: no prior column
     return tuple(f"{float(row[c]):.4f}" if c in ("amount", "phi") else str(row[c]) for c in KEY)
 
 
@@ -84,7 +86,12 @@ def write_rows(rows):
     fields = []
     for r in allrows:
         fields += [c for c in r if c not in fields]
-    allrows.sort(key=lambda r: (int(r["T"]), int(r["k"]), int(r["r"]), float(r["phi"]), r["family"],
+    for r in allrows:
+        r.setdefault("prior", "mw")
+        if r["prior"] == "":
+            r["prior"] = "mw"
+    allrows.sort(key=lambda r: (int(r["T"]), int(r["k"]), int(r["r"]), float(r["phi"]), r["prior"],
+                                r["family"],
                                 r["knob"], r["shape"], float(r["amount"]), float(r["p"]),
                                 r["estimator"]))
     SUMMARY.parent.mkdir(parents=True, exist_ok=True)
@@ -108,6 +115,8 @@ def main():
     p.add_argument("--nice", type=int, default=19)
     p.add_argument("--coupled", action="store_true",
                    help="run the covariate-model test cases instead of the standard changes")
+    p.add_argument("--prior", default="mw", choices=sorted(stage_c.PRIORS),
+                   help="prior scales of the random walks (default: the authors')")
     p.add_argument("--rescore", action="store_true",
                    help="only rescore saved scenarios (adds the further MLE estimators)")
     args = p.parse_args()
@@ -118,7 +127,7 @@ def main():
         for k in args.k:
             for family in args.families:
                 for ch in (coupled_scenarios if args.coupled else scenarios)(family):
-                    path = path_for(family, ch, k, T, args.phi, args.r)
+                    path = path_for(family, ch, k, T, args.phi, args.r, args.prior)
                     if args.rescore and not path.exists():
                         continue
                     if (args.skip_existing or args.rescore) and path.exists():
@@ -128,7 +137,8 @@ def main():
                         t0 = time.time()
                         res = stage_c.simulate_scenario(family, ch, k=k, T=T, phi=args.phi,
                                                         r=args.r, N=args.N, seed=args.seed,
-                                                        workers=args.workers)
+                                                        workers=args.workers,
+                                                        mcmc=dict(prior=args.prior))
                         stage_c.save(res, path)
                         print(f"{family:6s} {ch.label:22s} k={k} T={T}: {args.N} fits in "
                               f"{time.time() - t0:.0f} s", flush=True)
@@ -136,7 +146,7 @@ def main():
                     rows = stage_c.score_rows(res, cache_dir=CACHE, extra=extra)
                     write_rows(rows)
                     for r in rows:
-                        if r["p"] == 0.99 and r["estimator"] in ("trend", "trend3", "cov3", "tvp_median"):
+                        if r["p"] == 0.99 and r["estimator"] in ("trend", "trend2", "recent30", "cov3", "tvp_median"):
                             print(f"   {r['estimator']:10s} X99 last year: true exceedance median "
                                   f"{100 * r.get('exc_med_last', float('nan')):.2f}%, >2%: "
                                   f"{100 * r.get('exc_gt2x_last', float('nan')):.0f}% of panels"

@@ -31,6 +31,11 @@ PROBS = (0.5, 0.9, 0.99)
 XI_MIN, XI_MAX = -0.9, 2.1
 SG_XI, SG_ALPHA, SG_S = 1.0, 0.5, 0.5
 
+# Prior scale sets (sg_xi, sg_alpha, sg_s) for the random walks' innovation scales. "mw" is the
+# authors'; "tight" shrinks the walks of the shape and scale parameters by a factor 2-4 (the
+# location walk, whose scale is set by the data, is unchanged): a prior-sensitivity check.
+PRIORS = {"mw": (SG_XI, SG_ALPHA, SG_S), "tight": (0.25, 0.25, 0.25)}
+
 _MODEL = None
 
 
@@ -78,13 +83,16 @@ class TVPFit:
     seconds: float
 
 
-def fit_tvp(X, probs=PROBS, chains=4, warmup=1000, samples=1000, seed=1, adapt_delta=0.95):
-    """Fit the 4-random-walk GEV model to one panel X (T, k), rows sorted in decreasing order."""
+def fit_tvp(X, probs=PROBS, chains=4, warmup=1000, samples=1000, seed=1, adapt_delta=0.95,
+            prior="mw"):
+    """Fit the 4-random-walk GEV model to one panel X (T, k), rows sorted in decreasing order.
+    prior: a key of PRIORS (the random walks' prior scales)."""
     import time
     X = np.asarray(X, float)
     T, k = X.shape
-    data = dict(T=T, nobs=k, xi_min=XI_MIN, xi_max=XI_MAX, sg_xi=SG_XI, sg_alpha=SG_ALPHA,
-                sg_s=SG_S, y=X.T.tolist(), np=len(probs), probs=list(probs))
+    sg_xi, sg_alpha, sg_s = PRIORS[prior]
+    data = dict(T=T, nobs=k, xi_min=XI_MIN, xi_max=XI_MAX, sg_xi=sg_xi, sg_alpha=sg_alpha,
+                sg_s=sg_s, y=X.T.tolist(), np=len(probs), probs=list(probs))
     tmp = tempfile.mkdtemp(prefix="stage_c_")
     t0 = time.time()
     try:
@@ -163,7 +171,11 @@ def _panel(family, change, k, T, phi, r, seed, rep, with_mean=False):
 #   trend3     c_t = time (linear trends in all three parameters)
 #   cov3       c_t = annual mean of all days of year t (what an analyst can compute)
 #   cov3_true  c_t = the true mean path m_t (an oracle covariate, e.g. a known warming curve)
-EXTRA_NAMES = ("trend3", "cov3", "cov3_true")
+#   trend2     linear trends in mu and log sigma, constant xi
+#   recent30   constant GEV fitted to the last 30 years only (a common practical shortcut;
+#              equal to the constant fit when T <= 30); its path is flat
+EXTRA_NAMES = ("trend3", "cov3", "cov3_true", "trend2", "recent30")
+RECENT = 30
 
 
 def _extra_job(args):
@@ -191,6 +203,21 @@ def _extra_job(args):
                 mu, sg, xi = f.params()
                 for ip, p in enumerate(PROBS):
                     out[i, ip] = gev_quantile(p, mu, sg, xi)
+        i = EXTRA_NAMES.index("trend2")
+        try:
+            f = fit_gev_covariate(X, time_index(T), start=start, vary=("mu", "sigma"))
+            if f.success:
+                mu, sg, xi = f.params()
+                for ip, p in enumerate(PROBS):
+                    out[i, ip] = gev_quantile(p, mu, sg, xi)
+        except (np.linalg.LinAlgError, ValueError, FloatingPointError):
+            pass
+        i = EXTRA_NAMES.index("recent30")
+        Xr = X[-RECENT:]
+        fr = fit_local(Xr, _start(Xr)) if T > RECENT else start
+        if fr.success:
+            for ip, p in enumerate(PROBS):
+                out[i, ip] = fr.quantile(p)
     return rep, out
 
 
@@ -254,6 +281,7 @@ class ScenarioResult:
     mle_q: np.ndarray        # (N, 3, n_p, T)  const, trend, split
     tvp_q: np.ndarray        # (N, 4, n_p, T)  posterior mean, median, 5%, 95%
     diag: np.ndarray         # (N, 4)  divergences, max R-hat, min bulk ESS, seconds
+    prior: str = "mw"        # key of PRIORS used for the TVP fits
 
 
 def simulate_scenario(family, change, k=1, T=85, phi=0.5, r=0, N=100, seed=1, workers=None,
@@ -278,14 +306,15 @@ def simulate_scenario(family, change, k=1, T=85, phi=0.5, r=0, N=100, seed=1, wo
         stats[i], mle_q[i], tvp_q[i], diag[i] = st, mq, tq, dg
     if workers != 1:
         ex.shutdown()
-    return ScenarioResult(family, change, k, T, phi, r, seed, stats, mle_q, tvp_q, diag)
+    return ScenarioResult(family, change, k, T, phi, r, seed, stats, mle_q, tvp_q, diag,
+                          mcmc.get("prior", "mw"))
 
 
 def save(res: ScenarioResult, path):
     np.savez_compressed(path, stats=res.stats, mle_q=res.mle_q.astype(np.float32),
                         tvp_q=res.tvp_q.astype(np.float32), diag=res.diag, family=res.family,
                         change=res.change.label, k=res.k, T=res.T, phi=res.phi, r=res.r,
-                        seed=res.seed, probs=np.array(PROBS))
+                        seed=res.seed, probs=np.array(PROBS), prior=res.prior)
 
 
 def load(path):
@@ -293,7 +322,8 @@ def load(path):
     knob, shape, amount = str(d["change"]).split(":")
     return ScenarioResult(str(d["family"]), pa.Change(knob, shape, float(amount)), int(d["k"]),
                           int(d["T"]), float(d["phi"]), int(d["r"]), int(d["seed"]), d["stats"],
-                          d["mle_q"].astype(float), d["tvp_q"].astype(float), d["diag"])
+                          d["mle_q"].astype(float), d["tvp_q"].astype(float), d["diag"],
+                          str(d["prior"]) if "prior" in d else "mw")
 
 
 def score_rows(res: ScenarioResult, cache_dir=None, extra=None):
@@ -327,7 +357,8 @@ def score_rows(res: ScenarioResult, cache_dir=None, extra=None):
             good = np.all(np.isfinite(q), axis=1)
             q = q[good]
             row = dict(family=res.family, knob=res.change.knob, shape=res.change.shape,
-                       amount=res.change.amount, k=res.k, T=res.T, phi=res.phi, r=res.r, p=p,
+                       amount=res.change.amount, k=res.k, T=res.T, phi=res.phi, r=res.r,
+                       prior=res.prior, p=p,
                        estimator=name, N=int(good.sum()),
                        true_first=float(truth[0]), true_last=float(truth[-1]))
             if q.shape[0]:
