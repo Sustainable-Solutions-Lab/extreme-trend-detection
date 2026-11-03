@@ -40,13 +40,15 @@ random-walk model, does better on average.
 
 \emph{Using the wrong model.} There is no single best model for the change. Whether to model it as a
 function of time or of the mean state depends on which actually drives it, and that is usually
-unknown. With 85 years, the wrong driving variable can raise the share of records in which the
-current 99\% level misses the true risk by more than a factor of 2 by 10--20 percentage points: a
-mean-state model cannot see a change that does not move the mean, and a linear time trend cannot
-follow an accelerating mean state. When the mean accelerates, following its path matters more than
-getting right what drives the width, so the mean-state model loses little even when the width in
-fact changes on its own time course. Fitting a change that is not there costs about as much
-(11--16 points for the location + width and covariate models). Averaging the candidate models with Akaike weights is a robust way out: at 85 years the
+unknown. With 85 years, using the wrong driving variable raises the share of records in which the
+current 99\% level misses the true risk by more than a factor of 2 from 65\% to 75\% when the width
+and tail follow an accelerating mean (a linear time trend cannot follow it), and from 55\% to 69\%
+when the width changes but the mean does not (a mean-state model cannot see it). When the mean
+accelerates, following its path matters more than getting right what drives the width, so the
+mean-state model loses little even when the width in fact changes on its own time course. Fitting a
+change that is not there is about as costly: with no change, the share rises from 44\% for the
+constant fit to 55--60\% for the location + width and covariate models. Averaging the candidate
+models with Akaike weights is a robust way out: at 85 years the
 average is never more than 4 points worse than the best single model for the true process, while
 each single model is 11--30 points worse for some process. With 30 years, sampling noise dominates
 and no choice of model helps much.
@@ -566,7 +568,7 @@ Table~\ref{tab:wrongdetail} splits the misses into under- and overstatement.}
 
 \paragraph{Findings.}
 \begin{itemize}
-\item \textbf{The wrong driving variable can cost 10--20 percentage points at 85 years.} When the
+\item \textbf{At 85 years the wrong driving variable makes the estimate clearly worse.} When the
   distribution follows an accelerating mean state, the location + width trend misses 75\% of
   records and the covariate model 65\%. When the width changes while the mean stays constant, the
   covariate model, whose covariate then carries no signal, misses 69\% and the location + width

@@ -306,9 +306,9 @@ findings, for 85-year records with one value per year unless stated:
 - **Using the wrong model.** No model is right for every physical process, so we classified the
   cases by true process and scored every model on all of them (two-sided: the share of records
   in which the estimate misses the true risk by more than a factor of 2 either way; 44% with no
-  change and the correct model). A model with the wrong driving variable can lose 10–20 points: a
-  mean-state model cannot see a width change at constant mean, and a linear time trend cannot
-  follow an accelerating mean. When the mean accelerates but the width changes linearly in time
+  change and the correct model). With the wrong driving variable the share of misses rises from 65% to 75%
+  when the width follows an accelerating mean (a linear time trend cannot follow it), and from 55%
+  to 69% when the width changes at constant mean (a mean-state model cannot see it). When the mean accelerates but the width changes linearly in time
   (`warm_time` cases), the mean-state model still does as well as any (64% against 68% for the
   location + width trend), because following the mean path matters more than the driver of the
   width. AIC cannot reliably identify the driver, but an AIC-weighted average of the constant,
