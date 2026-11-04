@@ -113,10 +113,10 @@ with the heaviest tails: in our records $\xs$ is above the posterior median in e
 above the posterior mean of $q_d$ in two-thirds of records at 85 years (a tenth at 30 years;
 Figure~\ref{fig:anatomy}).
 
-We assume that the reported ``99th percentile of the posterior rainfall distribution'' is this
-predictive 99th percentile of the annual-maximum distribution, i.e.\ the 1-in-100-year level, in
-the final year of the record. If it is a percentile of another quantity (daily rainfall, say), the
-mechanism below still applies but the numbers will differ.
+Throughout, the quantity studied is this predictive 99th percentile of the annual-maximum
+distribution, i.e.\ the 1-in-100-year level, in the final year of the record. A predictive
+percentile of another quantity (daily rainfall, say) works by the same mechanism, but its numbers
+will differ.
 
 \subsection{The model, the data and the score}
 
@@ -349,7 +349,7 @@ the number of draws.
 
 \section{Ambiguity in the climate, or in the inference?}\label{sec:ambiguity}
 
-The argument for the predictive approach is that possible non-stationarity, combined with possibly
+One argument for the predictive approach is that possible non-stationarity, combined with possibly
 long tails, makes the climate distribution genuinely ambiguous, and that the high and volatile
 estimates of catastrophic risk reflect that ambiguity. The synthetic records let us separate the
 two parts, because in the no-change cases nothing is changing and the true tail is at most moderately heavy
@@ -430,6 +430,11 @@ itself, evidence that the climate's extremes are changing or are heavy-tailed.
   differences between estimators on the same records to about $\pm1.5$.
 \end{itemize}
 
+\section*{Reference}
+
+M\"uller, U. K. and M. W. Watson (2024). Time varying extremes. \emph{Review of Economics and
+Statistics}, doi:10.1162/rest\_a\_01528.
+
 \appendix
 \section{Results at 30 years by kind of change}
 
@@ -442,11 +447,13 @@ itself, evidence that the climate's extremes are changing or are heavy-tailed.
 \section{Reproducing these results}
 
 {\sloppy
-The Bayesian fits are rerun with \texttt{python scripts/stage\_c.py --replay}, which refits every
+The code, the summary tables and a longer report on the replication of M\"uller and Watson
+(2024), from which the synthetic records and model settings are taken (\texttt{report/report.pdf}),
+are in the repository named on the title page. The Bayesian fits are rerun with \texttt{python scripts/stage\_c.py --replay}, which refits every
 saved scenario with its original seeds and settings and adds the predictive quantiles, the
 per-chain values, the spread of the draws' exceedance probabilities and the final-year posterior
 draws (written to \texttt{data/output/stage\_c\_pred}; about 20 hours on 14 cores). The posterior
-medians and means reproduce the earlier runs to within $3\times10^{-6}$. The tables, figures and
+medians and means reproduce those of the longer report to within $3\times10^{-6}$. The tables, figures and
 numbers of this note come from \texttt{python scripts/predictive\_note.py}, which also writes the
 summary tables \texttt{predictive\_headline.csv}, \texttt{predictive\_uncertainty.csv} and
 \texttt{predictive\_rain\_ratio.csv} in \texttt{data/results}.\par}
