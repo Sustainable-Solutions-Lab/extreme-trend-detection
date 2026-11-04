@@ -70,7 +70,8 @@ in 16--28\%.
   draws put it above 4.6--5.8\%. The 1\% is an average over beliefs that range from almost nothing
   to five or more times the target. The top 5\% of draws carry 38--52\% of it.
 \item The overstatement is largest in records whose posterior leans towards heavy tails (a
-  positive GEV shape $\xi$), which none of our synthetic climates had in the final year.
+  GEV shape $\xi$ well above zero), heavier than in any of our synthetic climates
+  ($\xi\lesssim0.2$).
 \item Shrinking the prior scales of the random walks (a ``tight prior'') lowers the predictive
   level, raises its typical true exceedance from 0.39\% to 0.64\% at 85 years and from 0.05\% to
   0.24\% at 45 years, and brings its accuracy close to that of the posterior median.
@@ -121,7 +122,7 @@ mechanism below still applies but the numbers will differ.
 
 \begin{description}\setlength{\itemsep}{1pt}
 \item[Model] The four-random-walk GEV model of M\"uller and Watson (2024), their Stan code and
-  priors unchanged (random walks in $\xi$, a scale and two location terms; innovation scales
+  priors unchanged (random walks in $\xi$ and in three scale and location terms; innovation scales
   $\gamma=\mathrm{sg}\cdot g/\sqrt T$ with $g\sim\mathrm{Exp}(1)$ and $\mathrm{sg}=1, 0.5, 0.5$; $\xi$
   confined to $(-0.9, 2.1)$). Four chains of 1,000 warm-up and 1,000 sampling iterations
   (\texttt{adapt\_delta} 0.95). The ``tight prior'' runs use $\mathrm{sg}=0.25$ for all three.
@@ -182,6 +183,13 @@ standard cases: 10--90th percentiles (thin bar), 25--75th (thick bar), median (c
   (10--90th percentile $-6\%$ to $+25\%$), 22\% above at 45 years and 31\% above at 30. Because the
   chance of exceedance falls steeply with depth in the far tail, an 8\% overstatement of the depth
   becomes a factor of 2.5 in the probability.
+\item \textbf{Several values per year help, but only modestly.} Fitting the three largest
+  (declustered) values of each year instead of the annual maximum cuts the share of records whose
+  posterior leans heavy-tailed from 38\% to 14\% at 45 years and from 12\% to 8\% at 85 years
+  (Table~\ref{tab:uncertainty}). The predictive level's median true exceedance rises from 0.05\% to
+  0.2\% at 45 years and from 0.4\% to 0.6\% at 85, and its share missed falls from 84\% to 78\% and
+  from 68\% to 60\%. But the other estimators gain about as much, so the predictive level still
+  misses 7--16 points more often than the posterior median.
 \end{itemize}
 
 Table~\ref{tab:groups} breaks the 85-year results down by the kind of change and by distribution.
@@ -344,7 +352,8 @@ the number of draws.
 The argument for the predictive approach is that possible non-stationarity, combined with possibly
 long tails, makes the climate distribution genuinely ambiguous, and that the high and volatile
 estimates of catastrophic risk reflect that ambiguity. The synthetic records let us separate the
-two parts, because in the no-change cases nothing is changing and the true tail is never heavy:
+two parts, because in the no-change cases nothing is changing and the true tail is at most moderately heavy
+($\xi\lesssim0.2$):
 
 \begin{table}[H]
 \centering\small
@@ -392,8 +401,12 @@ itself, evidence that the climate's extremes are changing or are heavy-tailed.
   trend maximum-likelihood fit, the difference comes from the posterior's heavy-tailed draws, and
   should be justified on other grounds (physical or regional knowledge of the tail).
 \item \textbf{Bring in more information on the tail.} Pooling the shape parameter across nearby
-  stations (regional frequency analysis), or using several values per year, constrains $\xi$ much
+  stations (regional frequency analysis), or using several values per year, constrains $\xi$
   better than a single annual-maximum record, and the overstatement shrinks as $\xi$ is pinned down.
+  In our records, three values per year from 45 years constrained $\xi$ about as well as 85 years
+  of annual maxima, but the predictive level still missed in 78\% of records against 68\%; at
+  85 years it did slightly less than the tight prior (60\% missed against 57\%). Pooling across
+  stations is likely to do more.
 \item \textbf{Separate the risk margin from the estimate.} The predictive approach builds a loading
   for ambiguity into the estimate through the prior. If a margin for ambiguity is wanted, it may be
   clearer to estimate the risk with a well-calibrated central estimate and add an explicit,
