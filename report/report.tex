@@ -32,7 +32,8 @@
 \item How reliably do they detect a change?
 \item How accurately do they estimate the current 1-in-100-year level?
 \item What happens when the model of the change is wrong?
-\item How uncertain is the posterior-predictive 1-in-100-year level of their Bayesian model?
+\item How close to the true risk is their Bayesian model's posterior-predictive 1-in-100-year
+  level, which builds in parameter uncertainty, and why?
 \end{enumerate}
 \vspace{-0.4\baselineskip}
 \noindent To answer them against a known truth, we generated synthetic daily records of 30 to 150 years from
@@ -58,7 +59,8 @@ estimated from 85 years is badly off in 44\% of records, in the sense that its t
 exceeded is more than twice or less than half the nominal 1\%: it understates the risk in 27\% of
 records and overstates it in 18\%. When extremes are changing, the methods we tested, including the
 authors' Bayesian random-walk model, are badly off in 51--59\% of 85-year records and in about
-three-quarters of 30-year records. The Bayesian model is no more accurate than a simple linear trend.
+three-quarters of 30-year records. The Bayesian model's posterior median is no more accurate than a
+simple linear trend.
 
 \emph{Using the wrong model.} Change can be modelled as a function of time or of the mean state;
 which is right is usually unknown, the record rarely shows it, and the wrong choice matters most
@@ -98,14 +100,17 @@ matter:
   ``detected'' when there is none?
 \item \textbf{Quantification.} How well do the methods estimate the current return level, for
   example the level the annual maximum exceeds with probability 1\% this year ($\Xp$), and its
-  change over the record?
+  change over the record? Each method gives a best estimate of this fixed but unknown level; for
+  the Bayesian model it is the posterior median.
 \item \textbf{Using the wrong model.} A change can be modelled as a function of time (trends,
   random walks) or of the mean state (a covariate). Either could be physically right, and usually
   we do not know which. What is lost when the change follows one and we model it as a function of
   the other, and what can be done when we do not know?
 \item \textbf{The posterior-predictive level.} A Bayesian user who must price risk reports the
   99th percentile of the posterior predictive distribution rather than a statistic of the
-  posterior draws. How close is that level to the truth, and where does its uncertainty come from?
+  posterior draws. That level is not an estimate of $\Xp$: it is the level whose chance of being
+  exceeded is 1\% once parameter uncertainty is averaged in. How close is it to the true risk,
+  and where does its uncertainty come from?
 \end{enumerate}
 
 %=====================================================================================
@@ -934,6 +939,15 @@ close it is to the truth and where its uncertainty comes from. We refitted every
 Section~\ref{sec:quant} with its original seeds and settings (19,700 fits), keeping the
 draws' distributions; the posterior medians and means reproduce the earlier fits to within
 $3\times10^{-6}$, so all comparisons below are on the same records and draws.
+
+The predictive level answers a different question from the estimators of
+Section~\ref{sec:quant}. They try to estimate a fixed but unknown number, the true $\Xp$, and
+the posterior median is the Bayesian model's best estimate of it. The predictive level instead
+states a risk: under everything the posterior still believes, including draws with heavy tails,
+the chance of exceeding it is 1\%. Because it folds parameter uncertainty into the level, it lies
+above the posterior median by design, and lying above the true level is not in itself a fault. We score it the same way as the estimators, by the true chance of exceeding it, because that
+is what a user relying on it is exposed to. The question is whether the margin it builds in is the
+right size, and how much it varies from one record to the next.
 
 \subsection{Definition}\label{sec:pred-what}
 
