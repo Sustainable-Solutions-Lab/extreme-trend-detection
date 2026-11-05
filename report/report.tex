@@ -144,7 +144,7 @@ Records per case & 10,000 with no change; 2,000 per change & 100 \\
 Scores & false-alarm rate (size); detection rate (power) & true exceedance probability of the last year's estimated level: missed $>2\times$ either way, understated, overstated; error in the estimated change; Bayesian interval coverage and width \\
 \bottomrule
 \end{tabular}
-\caption{Study design: the dimensions varied in the detection and quantification studies.}
+\caption{Study design. Columns: the detection study (does a test find a change?) and the quantification study (how close is the estimated current 1-in-100-year level to the truth?). Rows: the dimensions varied. Not every combination was run: persistence and values-per-year variations were run mainly at 85 years.}
 \label{tab:design}
 \end{table}
 
@@ -308,9 +308,7 @@ and is unaffected.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig05_size.pdf}
-\caption{False-rejection rate of the four tests with no change, by design ($k$ values per year,
-day-to-day correlation $\phi$, record length $T$). Dots: mean over the four parents; lines: range.
-Vertical line: nominal 5\%.}
+\caption{False alarms: how often each test rejects ``no change'' at the nominal 5\% level when nothing is changing. Rows: designs, given by the number of values used per year $k$ ($k=1$: the annual maximum), the day-to-day correlation $\phi$ of the daily series and the record length $T$ in years; ``declustered'': the values are at least 3 days apart. Dots: mean over the four parent distributions; lines: their range. Vertical line: the nominal 5\%. With one value per year all tests stay near 5\% except the location-trend LR test at 30 years; several values per year from a persistent series raise false alarms (to 20--50\% at $\phi=0.8$) unless they are declustered.}
 \label{fig:size}
 \end{figure}
 
@@ -341,10 +339,7 @@ the false-alarm rate (Section~\ref{sec:size}).
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig04_power.pdf}
-\caption{Rejection rate (nominal 5\% level) against the size of the true change in $\Xp$
-(computed for independent days; the correlated-day value differs by under 1\%), for linear changes
-in mean, width and tail, one value per year, $\phi=0.5$. Colour: record length.
-Solid: Nyblom; dashed: location-trend LR.}
+\caption{Detection rate: the share of records in which a test rejects ``no change'' at the nominal 5\% level, against the size of the true change in the 1-in-100-year level $\Xp$ over the record (in baseline daily standard deviations; computed for independent days, within 1\% of the correlated-day value). Rows: linear change in the mean, width or tail of the daily distribution; columns: parent distribution (the normal has no tail parameter). Colour: record length, light (30 years) to dark (150). Solid, circles: Nyblom test (the paper's); dashed, squares: location-trend likelihood-ratio test. Grey line: 5\%. One value per year, day-to-day correlation 0.5. The same change is detected far less often for skewed or heavy-tailed parents than for the normal.}
 \label{fig:power}
 \end{figure}
 
@@ -353,11 +348,7 @@ Solid: Nyblom; dashed: location-trend LR.}
 \scriptsize
 \setlength{\tabcolsep}{2.6pt}
 \input{tables/power.tex}
-\caption{Power (\%, nominal 5\% level) of the Nyblom (Nyb.), location-trend LR, Mann--Kendall (MK)
-and two-halves (Hlv.) tests for selected linear changes, one value per year, $\phi=0.5$; bold: the
-highest in each group. $\Delta X_{0.99}$: true change in the 99\% level over the record (baseline
-daily sd). Last row: size (\%) with no change, mean over parents; the LR test's edge at 30 years
-partly reflects its over-sizing.}
+\caption{Detection rate (\%) at the nominal 5\% level for selected linear changes, one value per year, day-to-day correlation 0.5, records of $T$ years. Tests: Nyb., Nyblom parameter-constancy test (M\"uller and Watson); LR, location-trend likelihood ratio; MK, Mann--Kendall rank test; Hlv., two-halves test. Bold: the highest of the four. $\Delta X_{0.99}$: true change in the 1-in-100-year level over the record (baseline daily sd). Last row: false-alarm rate (\%) with no change, mean over parents; the LR test's edge at 30 years partly reflects its excess false alarms. Mann--Kendall matches or beats the Nyblom test in almost every case.}
 \label{tab:power}
 \end{table}
 
@@ -393,46 +384,35 @@ the end of the record, and with 30 years its credible band is very wide upward.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig01_examples.pdf}
-\caption{Four typical 85-year records (points: annual maxima) with the true 99\% level
-(black) and five estimates. Shaded: Bayesian 90\% credible interval. Units: baseline daily
-standard deviation.}
+\caption{Four example 85-year records (points: annual maxima), with the true 1-in-100-year level of each year (black) and six estimates of it: constant GEV (grey), location trend (blue), location + width trend (green), mean-state covariate model (yellow) and the Bayesian random-walk model's posterior median (orange), with its 90\% credible interval shaded. Titles: parent distribution and true change (accel.: accelerating). Units: baseline daily standard deviation. The 1-in-100-year level lies above almost every annual maximum, so it must be extrapolated from them.}
 \label{fig:examples}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig02_spread.pdf}
-\caption{Spread of the estimated 99\% level over 100 records of 85 years (median, 25--75\% and
-5--95\% of the estimates in each year) for a linear mean shift (top) and two covariate-model cases
-(middle, bottom), with the truth in black.}
+\caption{How the estimated 1-in-100-year level varies across 100 synthetic 85-year records of the same climate. Columns: estimator (Bayesian: posterior median). Rows: normal parent with a linear mean rise (top); normal parent whose width and tail follow an accelerating mean (middle); gamma (precipitation-like) parent whose quantiles all scale with an accelerating mean (bottom). In each year: median of the 100 estimates (line), 25--75\% (dark band) and 5--95\% (light band); black: the truth. Units: baseline daily standard deviation. The constant model misses the change; the others track it on average, but single records scatter widely.}
 \label{fig:spread}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig03_record_length.pdf}
-\caption{Effect of record length: the location-trend (blue) and Bayesian (orange) estimates for
-30, 45 and 85 years. The total change over the record is the same in each column, so the change
-per year is larger for shorter records.}
+\caption{Effect of record length. Location-trend (blue) and Bayesian posterior-median (orange) estimates of the 1-in-100-year level over 100 records per panel. In each year: median of the 100 estimates (line), 25--75\% (dark band) and 5--95\% (light band); black: the truth. Columns: 30, 45 and 85 years, with the same total change in each, so the change per year is larger for shorter records. Rows: normal parent, linear mean rise of 0.5 daily sd (top) and accelerating warming with the width following the mean (bottom). Units: baseline daily standard deviation. At 30 years the spread across records is much larger than the change itself.}
 \label{fig:length}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_records_luck.pdf}
-\caption{The luck of the draw: for the same case, an easy, a typical and a hard 85-year record
-(10th, 50th and 90th percentiles of the average error of the three estimates in the last year).
-Points: annual maxima; black: true 99\% level; lines: estimates; shaded: Bayesian 90\% interval.
-Above each panel: the true probability that each estimate of the last year's level is exceeded
-(ideal 1\%; Loc.: location trend, AIC: AIC-weighted average, Bayes: Bayesian median). Units: baseline daily sd.}
+\caption{The luck of the draw: three 85-year records of the same climate, an easy, a typical and a hard one (10th, 50th and 90th percentiles of 100 records ranked by the average error of the three estimates in the last year, $|\log(\text{true exceedance}/1\%)|$). Normal parent; top: mean +0.5 daily sd, linear; bottom: accelerating warming with width and tail following the mean. Points: annual maxima; black: true 1-in-100-year level; blue: location trend; red, dashed: AIC-weighted average of four simple models; orange: Bayesian posterior median, with its 90\% credible interval shaded. Above each panel: the true probability that each estimate of the last year's level is exceeded (ideal 1\%; above 2\%: risk understated at least twofold; below 0.5\%: overstated; Loc.: location trend, AIC: AIC-weighted average, Bayes: Bayesian median). Units: baseline daily standard deviation. The same method can be nearly right or several-fold off depending only on the record.}
 \label{fig:luck}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_records_length.pdf}
-\caption{Typical single records of 30, 45 and 85 years for the two cases of
-Figure~\ref{fig:length}. Same layout as Figure~\ref{fig:luck}.}
+\caption{Typical single records of 30, 45 and 85 years for the two cases of Figure~\ref{fig:length} (normal parent; top: mean +0.5 daily sd, linear; bottom: accelerating warming with the width following the mean). ``Typical'': the median of 100 records ranked by the average error of the three estimates in the last year, $|\log(\text{true exceedance}/1\%)|$. Points: annual maxima; black: true 1-in-100-year level; blue: location trend; red, dashed: AIC-weighted average of four simple models; orange: Bayesian posterior median, with its 90\% credible interval shaded. Above each panel: the true probability that each estimate of the last year's level is exceeded (ideal 1\%; above 2\%: risk understated at least twofold; below 0.5\%: overstated; Loc.: location trend, AIC: AIC-weighted average, Bayes: Bayesian median). Units: baseline daily standard deviation.}
 \label{fig:reclength}
 \end{figure}
 
@@ -466,37 +446,25 @@ level is exceeded (ideal 1\%). Single records show things that pooled scores hid
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_records_normal.pdf}
-\caption{Normal parent: the typical 85-year record for every case. Points: annual maxima; black: true 99\%
-level; location trend (blue), AIC-weighted average (red, dashed), Bayesian median (orange) with its
-90\% interval (shaded). Above each panel: true probability that each estimate of the last year's
-level is exceeded (ideal 1\%; Loc.: location trend, AIC: AIC-weighted average, Bayes: Bayesian median). Units: baseline daily sd.}
+\caption{Normal (temperature-like) parent: one typical 85-year record for every case (panel titles). ``Typical'': the median of 100 records ranked by the average error of the three estimates in the last year, $|\log(\text{true exceedance}/1\%)|$. Points: annual maxima; black: true 1-in-100-year level; blue: location trend; red, dashed: AIC-weighted average of four simple models; orange: Bayesian posterior median, with its 90\% credible interval shaded. Above each panel: the true probability that each estimate of the last year's level is exceeded (ideal 1\%; above 2\%: risk understated at least twofold; below 0.5\%: overstated; Loc.: location trend, AIC: AIC-weighted average, Bayes: Bayesian median). Units: baseline daily standard deviation.}
 \label{fig:rnormal}
 \end{figure}
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_records_gamma.pdf}
-\caption{Gamma (precipitation-like) parent: the typical 85-year record for every case. Points: annual maxima; black: true 99\%
-level; location trend (blue), AIC-weighted average (red, dashed), Bayesian median (orange) with its
-90\% interval (shaded). Above each panel: true probability that each estimate of the last year's
-level is exceeded (ideal 1\%; Loc.: location trend, AIC: AIC-weighted average, Bayes: Bayesian median). Units: baseline daily sd.}
+\caption{Gamma (precipitation-like) parent: one typical 85-year record for every case (panel titles). ``Typical'': the median of 100 records ranked by the average error of the three estimates in the last year, $|\log(\text{true exceedance}/1\%)|$. Points: annual maxima; black: true 1-in-100-year level; blue: location trend; red, dashed: AIC-weighted average of four simple models; orange: Bayesian posterior median, with its 90\% credible interval shaded. Above each panel: the true probability that each estimate of the last year's level is exceeded (ideal 1\%; above 2\%: risk understated at least twofold; below 0.5\%: overstated; Loc.: location trend, AIC: AIC-weighted average, Bayes: Bayesian median). Units: baseline daily standard deviation.}
 \label{fig:rgamma}
 \end{figure}
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_records_t.pdf}
-\caption{Student-$t$ (heavy-tailed) parent: the typical 85-year record for every case. Points: annual maxima; black: true 99\%
-level; location trend (blue), AIC-weighted average (red, dashed), Bayesian median (orange) with its
-90\% interval (shaded). Above each panel: true probability that each estimate of the last year's
-level is exceeded (ideal 1\%; Loc.: location trend, AIC: AIC-weighted average, Bayes: Bayesian median). Units: baseline daily sd.}
+\caption{Student-$t$ (heavy-tailed) parent: one typical 85-year record for every case (panel titles). ``Typical'': the median of 100 records ranked by the average error of the three estimates in the last year, $|\log(\text{true exceedance}/1\%)|$. Points: annual maxima; black: true 1-in-100-year level; blue: location trend; red, dashed: AIC-weighted average of four simple models; orange: Bayesian posterior median, with its 90\% credible interval shaded. Above each panel: the true probability that each estimate of the last year's level is exceeded (ideal 1\%; above 2\%: risk understated at least twofold; below 0.5\%: overstated; Loc.: location trend, AIC: AIC-weighted average, Bayes: Bayesian median). Units: baseline daily standard deviation.}
 \label{fig:rt}
 \end{figure}
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_records_beta.pdf}
-\caption{Beta (bounded) parent: the typical 85-year record for every case. Points: annual maxima; black: true 99\%
-level; location trend (blue), AIC-weighted average (red, dashed), Bayesian median (orange) with its
-90\% interval (shaded). Above each panel: true probability that each estimate of the last year's
-level is exceeded (ideal 1\%; Loc.: location trend, AIC: AIC-weighted average, Bayes: Bayesian median). Units: baseline daily sd.}
+\caption{Beta (bounded) parent: one typical 85-year record for every case (panel titles). ``Typical'': the median of 100 records ranked by the average error of the three estimates in the last year, $|\log(\text{true exceedance}/1\%)|$. Points: annual maxima; black: true 1-in-100-year level; blue: location trend; red, dashed: AIC-weighted average of four simple models; orange: Bayesian posterior median, with its 90\% credible interval shaded. Above each panel: the true probability that each estimate of the last year's level is exceeded (ideal 1\%; above 2\%: risk understated at least twofold; below 0.5\%: overstated; Loc.: location trend, AIC: AIC-weighted average, Bayes: Bayesian median). Units: baseline daily standard deviation.}
 \label{fig:rbeta}
 \end{figure}
 
@@ -526,26 +494,26 @@ case, one figure per parent, comparing the location trend (blue) with the Bayesi
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_paths_normal.pdf}
-\caption{Normal parent, all standard changes. Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Columns: record length; the total change over the record is the same in each column. Units: baseline daily sd.}
+\includegraphics[width=\textwidth,height=0.78\textheight,keepaspectratio]{figures/fig_paths_normal.pdf}
+\caption{Normal (temperature-like) parent: how the estimated 1-in-100-year level varies across 100 synthetic records of the same climate, for each standard change (rows) and record length (columns; the total change over the record is the same in each column). Blue: location trend; orange: Bayesian posterior median. In each year: median of the 100 estimates (line), 25--75\% (dark band) and 5--95\% (light band); black: the truth. Units: baseline daily standard deviation.}
 \label{fig:pnormal}
 \end{figure}
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_paths_gamma.pdf}
-\caption{Gamma (precipitation-like) parent, all standard changes. Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Columns: record length; the total change over the record is the same in each column. Units: baseline daily sd.}
+\includegraphics[width=\textwidth,height=0.78\textheight,keepaspectratio]{figures/fig_paths_gamma.pdf}
+\caption{Gamma (precipitation-like) parent: how the estimated 1-in-100-year level varies across 100 synthetic records of the same climate, for each standard change (rows) and record length (columns; the total change over the record is the same in each column). Blue: location trend; orange: Bayesian posterior median. In each year: median of the 100 estimates (line), 25--75\% (dark band) and 5--95\% (light band); black: the truth. Units: baseline daily standard deviation.}
 \label{fig:pgamma}
 \end{figure}
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_paths_t.pdf}
-\caption{Student-$t$ (heavy-tailed) parent, all standard changes. Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Columns: record length; the total change over the record is the same in each column. Units: baseline daily sd.}
+\includegraphics[width=\textwidth,height=0.78\textheight,keepaspectratio]{figures/fig_paths_t.pdf}
+\caption{Student-$t$ (heavy-tailed) parent: how the estimated 1-in-100-year level varies across 100 synthetic records of the same climate, for each standard change (rows) and record length (columns; the total change over the record is the same in each column). Blue: location trend; orange: Bayesian posterior median. In each year: median of the 100 estimates (line), 25--75\% (dark band) and 5--95\% (light band); black: the truth. Units: baseline daily standard deviation.}
 \label{fig:pt}
 \end{figure}
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_paths_beta.pdf}
-\caption{Beta (bounded) parent, all standard changes. Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Columns: record length; the total change over the record is the same in each column. Units: baseline daily sd.}
+\includegraphics[width=\textwidth,height=0.78\textheight,keepaspectratio]{figures/fig_paths_beta.pdf}
+\caption{Beta (bounded) parent: how the estimated 1-in-100-year level varies across 100 synthetic records of the same climate, for each standard change (rows) and record length (columns; the total change over the record is the same in each column). Blue: location trend; orange: Bayesian posterior median. In each year: median of the 100 estimates (line), 25--75\% (dark band) and 5--95\% (light band); black: the truth. Units: baseline daily standard deviation.}
 \label{fig:pbeta}
 \end{figure}
 
@@ -604,25 +572,21 @@ over the standard cases (20 cases including the four with no change) and the cov
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig06_exceedance.pdf}
-\caption{Distribution over records of the true probability that the estimated 99\% level is
-exceeded in the last year (circle: median; bar: 25--75\%; line: 5--95\%). Shaded band: within a
-factor 2 of the ideal 1\%.}
+\caption{Accuracy of the estimated 1-in-100-year level in the last year of the record, for eight estimators (rows). Plotted: the true probability that the last year's annual maximum exceeds the estimate. An ideal estimate gives 1\% (vertical line); left of it the level is too high (risk overstated), right of it too low (understated). Shaded: within a factor of 2 of 1\%. Over all records of a panel: white circle, median; thick bar, 25--75\%; thin line, 5--95\%. Panels: record length and set of cases (3/yr: three values per year instead of the annual maximum). Standard cases: the four parent distributions with no change or a linear or step change in their mean, width or tail. Covariate-model cases: the width (and for some parents the tail) follows an accelerating mean state; for the gamma, every quantile scales with the mean. Most medians are near 1\%, but single records range over one to more than two orders of magnitude.}
 \label{fig:exceedance}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig07_heatmap.pdf}
-\caption{Share of records in which the estimated 99\% level misses the true risk by more than a
-factor of 2 in either direction (left), and its two parts: risk understated (middle) or overstated
-(right) at least twofold, pooled over the standard and the covariate-model cases, by record length.}
+\caption{Share of records (\%) in which the estimated 1-in-100-year level of the last year is off by more than a factor of 2 in its risk. Left: missed either way; middle: risk understated (true probability of exceeding the estimate above 2\%: the level is too low); right: risk overstated (below 0.5\%: the level is too high). Missed = understated + overstated. Rows: estimators. Columns: record length in years (3/yr: three values per year), for the standard and, separately, the covariate-model cases. Darker: larger share. Standard cases: the four parent distributions with no change or a linear or step change in their mean, width or tail. Covariate-model cases: the width (and for some parents the tail) follows an accelerating mean state; for the gamma, every quantile scales with the mean. Even the best estimators miss about half of 85-year records and three-quarters of 30-year records.}
 \label{fig:heatmap}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_paths_values_per_year.pdf}
-\caption{One against three values per year (declustered, at least three days apart), at 45 and 85 years, for four cases. Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Units: baseline daily sd.}
+\caption{One value per year (the annual maximum) against three (the three largest, at least 3 days apart), at 45 and 85 years (columns), for four cases (rows: normal, mean +0.5 daily sd; gamma, width $\times$1.22; Student-$t$, tail lightened, log of degrees of freedom +1; beta, position change). Blue: location trend; orange: Bayesian posterior median. In each year: median of the 100 estimates (line), 25--75\% (dark band) and 5--95\% (light band); black: the truth. Units: baseline daily standard deviation. Three values per year generally narrow the bands.}
 \label{fig:pk}
 \end{figure}
 
@@ -631,10 +595,7 @@ factor of 2 in either direction (left), and its two parts: risk understated (mid
 \scriptsize
 \setlength{\tabcolsep}{2.3pt}
 \input{tables/headline.tex}
-\caption{Accuracy of the estimated 99\% level in the last year: median true exceedance
-probability (\%, ideal 1); share of records (\%) in which the level misses the true risk by more
-than a factor of 2 either way (bold); and its two parts, risk understated ($>2\%$) or overstated
-($<0.5\%$) at least twofold.}
+\caption{Accuracy of each estimator's 1-in-100-year level for the last year of the record. For each design (30, 45 and 85 years; 85 yr, 3/yr: three values per year): med., the median over records of the true probability (\%) that the last year's annual maximum exceeds the estimate (ideal 1); miss (bold), the share of records (\%) in which that probability is off by more than a factor of 2 either way; $>$2\%, the share with the risk understated (estimate too low); $<$0.5\%, the share with the risk overstated (estimate too high). Miss = $>$2\% + $<$0.5\%. Standard cases: the four parent distributions with no change or a linear or step change in their mean, width or tail. Covariate-model cases: the width (and for some parents the tail) follows an accelerating mean state; for the gamma, every quantile scales with the mean. Bayes (median) and (mean): posterior median and mean of the draws' levels. Cov., true mean: oracle covariate models given the true mean.}
 \label{tab:headline}
 \end{table}
 
@@ -654,9 +615,8 @@ change is 0.32, against the true 0.5.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{figures/fig08_change.pdf}
-\caption{Estimated change in the 99\% level over 85-year records (median and 10--90\% over
-records) against the truth (black bar), for every case.}
+\includegraphics[width=\textwidth,height=0.78\textheight,keepaspectratio]{figures/fig08_change.pdf}
+\caption{Estimated change in the 1-in-100-year level from the first to the last year of 85-year records, for every case (rows, grouped by parent), against the true change (black bar). Dots: median over 100 records; lines: 10--90\%. Location trend (blue), location + width trend (green), mean-state covariate (yellow), Bayesian posterior median (orange). Units: baseline daily standard deviation. The spread across records is often as large as the change, and the Bayesian model shrinks changes toward zero.}
 \label{fig:change}
 \end{figure}
 
@@ -696,9 +656,7 @@ never understates the risk after a tail change. With no change and the correct m
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_wrong_model.pdf}
-\caption{Share of records in which the estimated 99\% level in the last year misses the true risk
-by more than a factor of 2 in either direction, by true process (rows) and fitted model (columns).
-Bold: the model's form contains the true process (approximately); $\times$: it does not.}
+\caption{Using the wrong model: share of records (\%) in which the estimated 1-in-100-year level of the last year misses the true risk by more than a factor of 2 either way (true probability of exceeding it above 2\% or below 0.5\%), by true process (rows) and fitted model (columns), at 30 and 85 years. Lighter is better. Bold: the model's form contains the true process (approximately); $\times$: it does not. AIC choice and AIC average: the model chosen by, or the Akaike-weighted average of, the constant, location-trend, location + width trend and mean-state covariate models. Oracle covariate: the covariate model given the true mean. At 85 years a model that cannot represent the true process usually misses more; at 30 years every model misses most records.}
 \label{fig:wrong}
 \end{figure}
 
@@ -707,11 +665,7 @@ Bold: the model's form contains the true process (approximately); $\times$: it d
 \scriptsize
 \setlength{\tabcolsep}{2.4pt}
 \input{tables/wrong_model.tex}
-\caption{Using the wrong model. Left: share of records (\%) in which the estimated 99\% level in the
-last year misses the true risk by more than a factor of 2 either way; bold where the model's form
-contains the true process. Right: how often AIC selects each candidate. Loc.: location trend;
-Loc.+wid.: location and width trend; Cov.: mean-state covariate. Appendix
-Table~\ref{tab:wrongdetail} splits the misses into under- and overstatement.}
+\caption{Using the wrong model. Left: share of records (\%) in which the estimated 1-in-100-year level of the last year misses the true risk by more than a factor of 2 either way (true probability of exceeding it above 2\% or below 0.5\%); bold where the model's form contains the true process. Right: how often AIC selects each candidate. Const.: constant; Loc.: location trend; Loc.+wid.: location and width trend; Bayes: Bayesian posterior median; Cov.: mean-state covariate; AIC: the model chosen by AIC; AIC avg.: Akaike-weighted average. Appendix Table~\ref{tab:wrongdetail} splits the misses into under- and overstatement. The data rarely identify the true process, but the AIC-weighted average comes close to the best single model.}
 \label{tab:wrong}
 \end{table}
 
@@ -791,21 +745,14 @@ and the average is within 6 points of the best model throughout.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_paths_world.pdf}
-\caption{The same accelerating warming with the width (and for the $t$ the tail) following the mean
-state (``width follows mean'') or changing linearly in time (``width follows time''); the first- and
-last-year distributions are the same in each pair. Location + width trend (aqua) against the
-mean-state covariate model (yellow), which have the same number of parameters. Median (line),
-25--75\% and 5--95\% of the estimated 99\% level over 100 records, truth in black.}
+\caption{The same accelerating warming reached in two ways: the width (and for the Student-$t$ the tail) follows the mean state (``width follows mean''), or changes linearly in time between the same first- and last-year distributions (``width follows time''). Rows: normal and Student-$t$ parents in each world; columns: record length. Green: location + width trend; yellow: mean-state covariate model (same number of parameters). In each year: median of the 100 estimates (line), 25--75\% (dark band) and 5--95\% (light band); black: the truth. Units: baseline daily standard deviation. The two models differ little compared with the spread across records.}
 \label{fig:pworld}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_paths_wrong.pdf}
-\caption{Cases in which the mean state does not track the change. For a width or tail change at
-constant mean the covariate model (yellow) has no signal and stays nearly flat; for a step it follows
-the smoothed step. Location + width trend in aqua. Median, 25--75\% and 5--95\% over 100 records,
-truth in black.}
+\caption{Cases in which the mean state does not track the change: width or tail changes at constant mean, and a step in the mean. Green: location + width trend; yellow: mean-state covariate model. In each year: median of the 100 estimates (line), 25--75\% (dark band) and 5--95\% (light band); black: the truth. Columns: record length. Units: baseline daily standard deviation. With a width or tail change the covariate model sees little signal and its path is flatter than the truth; for the step it follows the smoothed step.}
 \label{fig:pwrong}
 \end{figure}
 
@@ -821,10 +768,7 @@ against 3.3\%). The AIC-weighted average usually lies between the two.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_records_wrong.pdf}
-\caption{Typical 85-year records for six true processes: annual maxima (points), true 99\% level
-(black), location + width trend (aqua), mean-state covariate model (yellow) and AIC-weighted average
-(red, dashed). Above each panel: true probability that each estimate of the last year's level is
-exceeded (ideal 1\%; L+W: location + width trend, Cov.: covariate model, AIC: AIC-weighted average). Units: baseline daily sd.}
+\caption{Typical 85-year records for six true processes (panel titles). ``Typical'': the median of 100 records ranked by the average error of the three estimates shown in the last year, $|\log(\text{true exceedance}/1\%)|$. Points: annual maxima; black: true 1-in-100-year level; green: location + width trend; yellow: mean-state covariate model; red, dashed: AIC-weighted average. Above each panel: the true probability that each estimate of the last year's level is exceeded (ideal 1\%; above 2\%: risk understated at least twofold; below 0.5\%: overstated; L+W: location + width trend, Cov.: covariate model, AIC: AIC-weighted average). Units: baseline daily standard deviation.}
 \label{fig:rwrong}
 \end{figure}
 
@@ -854,13 +798,13 @@ constant.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_paths_warming.pdf}
-\caption{Temperature-like covariate-model cases: the mean rises, and the width (and for the $t$ and beta the tail) follow it. Location trend (blue) against the mean-state covariate model (yellow). Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Columns: record length; the total change over the record is the same in each column. Units: baseline daily sd.}
+\caption{Temperature-like covariate-model cases: the mean rises (at an accelerating rate, or linearly in the second row), and the width (and for the Student-$t$ and beta the tail) follows it. Rows: parent; columns: record length (same total change in each). Blue: location trend; yellow: mean-state covariate model. In each year: median of the 100 estimates (line), 25--75\% (dark band) and 5--95\% (light band); black: the truth. Units: baseline daily standard deviation. Where the mean accelerates, the covariate model follows it and the linear trend lags at the end of the record.}
 \label{fig:pwarm}
 \end{figure}
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_paths_wetter.pdf}
-\caption{Precipitation-like covariate-model cases (gamma): every quantile scales with the mean, and in the last row the tail also gets heavier. Location trend (blue) against the mean-state covariate model (yellow). Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Columns: record length; the total change over the record is the same in each column. Units: baseline daily sd.}
+\caption{Precipitation-like covariate-model cases (gamma parent): every quantile scales with an accelerating mean, and in the last row the tail also gets heavier. Columns: record length (same total change in each). Blue: location trend; yellow: mean-state covariate model. In each year: median of the 100 estimates (line), 25--75\% (dark band) and 5--95\% (light band); black: the truth. Units: baseline daily standard deviation.}
 \label{fig:pwet}
 \end{figure}
 
@@ -877,9 +821,7 @@ informative for short records.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig09_bayes_intervals.pdf}
-\caption{Bayesian model. Left: coverage of the nominal 90\% interval for the last year's 99\%
-level. Right: median interval width relative to the 5--95\% range of the actual errors (1 = right
-width). One dot per parent; standard cases.}
+\caption{Bayesian random-walk model, standard cases, by design (rows; 3/yr: three values per year; indep.\ days: no day-to-day correlation; tight prior: random-walk prior scales 0.25). Left: coverage, the share of records whose 90\% credible interval for the last year's 1-in-100-year level contains the truth (nominal 0.90, vertical line). Right: median interval width divided by the 5--95\% range of the actual errors of the posterior median (1 = right width). One dot per parent distribution. The intervals cover the truth more often than nominal because they are 1.3 to 3 times too wide.}
 \label{fig:bayes}
 \end{figure}
 
@@ -909,13 +851,13 @@ case), because its stiffer paths lag the acceleration at the end of the record.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_paths_prior.pdf}
-\caption{Bayesian posterior median with the authors' prior and a tighter prior on the random-walk scales, at 45 and 85 years. Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Units: baseline daily sd.}
+\caption{Bayesian posterior median with the authors' prior and with a tighter prior on the random-walk scales (0.25 instead of 1, 0.5, 0.5), at 45 and 85 years (columns), for four cases (rows). In each year: median of the 100 posterior medians (line), 25--75\% (dark band) and 5--95\% (light band); black: the truth. Units: baseline daily standard deviation. The tighter prior narrows the bands but makes the paths stiffer, so they follow less of a change.}
 \label{fig:pprior}
 \end{figure}
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_paths_prior_covariate.pdf}
-\caption{Covariate-model cases at 85 years: Bayesian posterior median (orange) with the authors' and the tighter prior, and the mean-state covariate model (yellow). Median (line), 25--75\% (dark band) and 5--95\% (light band) of the estimated 99\% level in each year over 100 records, with the truth in black. Units: baseline daily sd.}
+\caption{Covariate-model cases at 85 years (rows; width and tail follow an accelerating mean): Bayesian posterior median (orange) with the authors' and the tighter prior (columns), and the mean-state covariate model (yellow). In each year: median of the 100 estimates (line), 25--75\% (dark band) and 5--95\% (light band); black: the truth. Units: baseline daily standard deviation. The tighter prior's stiffer paths lag the acceleration at the end of the record.}
 \label{fig:ppriorcov}
 \end{figure}
 
@@ -979,20 +921,14 @@ standard cases (the four distributions with and without change).
 
 \begin{table}[H]
 \centering\small\setlength{\tabcolsep}{3.5pt}
-\caption{True chance of exceeding the reported 1-in-100-year level in the final year, standard
-cases (2,000 records per design). For the predictive level: median and average over records, and
-the shares (\%) understated ($>2\%$) and overstated ($<0.5\%$) by more than a factor of 2. Right:
-the share missed by the other estimators on the same records, and the difference predictive minus
-posterior median ($\pm$ one standard error).}\label{tab:pred-designs}
+\caption{Predictive level: the 99th percentile of the Bayesian model's posterior predictive distribution of the last year's annual maximum (Section~\ref{sec:pred}). Standard cases, 2,000 records per design (3/yr: three values per year; indep.\ days: no day-to-day correlation; tight prior: random-walk prior scales 0.25). Left, for the predictive level: median and average over records of its true exceedance probability (the true chance that the last year's annual maximum exceeds it; ideal 1\%); under: share of records (\%) with the risk understated at least twofold (true exceedance above 2\%, level too low); over: overstated at least twofold (below 0.5\%, level too high); missed = under + over. Middle: share missed by other estimators on the same records. Right: missed share of the predictive level minus that of the posterior median, in percentage points $\pm$ one standard error. The predictive level is about right on average but usually too high in a single record.}\label{tab:pred-designs}
 \input{tables/pred_designs.tex}
 \end{table}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/pred_exceedance.pdf}
-\caption{True chance of exceeding the reported 1-in-100-year level, over the records of the
-standard cases: 10--90th percentiles (thin bar), 25--75th (thick bar), median (circle) and average
-(diamond). The grey band is the factor-of-2 band around 1\%.}\label{fig:pred-exceedance}
+\caption{True probability that the last year's annual maximum exceeds the reported 1-in-100-year level (ideal 1\%, dotted line), over the records of the standard cases. Violet: the Bayesian posterior-predictive level; orange: Bayesian posterior median; blue: location-trend fit; red: AIC-weighted average. White circle: median over records; black diamond: average; thick bar: 25--75\%; thin bar: 10--90\%. Grey band: within a factor of 2 of 1\% (0.5--2\%); below it the level is too high (risk overstated), above it too low (understated). Groups: record length, three values per year (3/yr) and the tighter prior. The predictive level is near 1\% on average, but its median is far lower: in a typical record it overstates the risk.}\label{fig:pred-exceedance}
 \end{figure}
 
 \begin{itemize}
@@ -1028,9 +964,7 @@ mean (68\% against 69\%). It does worst where the tail becomes lighter (79\% mis
 
 \begin{table}[H]
 \centering\small\setlength{\tabcolsep}{3.5pt}
-\caption{The predictive level at 85 years by kind of change and by distribution: median true
-exceedance, shares (\%) understated and overstated by more than a factor of 2, and missed; right,
-the share missed by other estimators on the same records.}\label{tab:pred-groups}
+\caption{The posterior-predictive level at 85 years by kind of change (top) and by parent distribution (bottom, standard cases only). Records: number of records. Median: median true exceedance probability of the predictive level (ideal 1\%). Under and over: share of records (\%) in which the risk is understated (true exceedance above 2\%, level too low) or overstated (below 0.5\%, level too high) at least twofold; missed = under + over. Right: share missed by other estimators on the same records. Follows mean state: width and tail follow an accelerating mean; time-driven: the same end states reached linearly in time. The predictive level overstates more often than it understates in every kind of case.}\label{tab:pred-groups}
 \input{tables/pred_groups_85yr.tex}
 \end{table}
 
@@ -1068,9 +1002,7 @@ pure premium rate the model would charge for cover triggered at that level.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/pred_price.pdf}
-\caption{Each model's chance of exceeding the true 1-in-100-year level of the final year, over the
-records of the standard cases (percentiles as in Figure~\ref{fig:pred-exceedance}). The grey band is a
-factor of 2 around the true 1\%.}\label{fig:pred-price}
+\caption{Pricing cover for an event whose true chance is 1\% a year: each model's probability (its pure premium rate) that the last year's annual maximum exceeds the true 1-in-100-year level, over the records of the standard cases. Violet: Bayesian posterior predictive; blue: location trend; grey: constant GEV. White circle: median over records; diamond: average; thick bar: 25--75\%; thin bar: 10--90\%. Grey band: within a factor of 2 of the true 1\%; above it the model overprices, below it underprices. The predictive model rarely underprices but usually overprices; the trend fit is right on average but often underprices tenfold or more.}\label{fig:pred-price}
 \end{figure}
 
 \begin{itemize}
@@ -1103,12 +1035,7 @@ draws carry a third of the average.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/pred_anatomy.pdf}
-\caption{One record (precipitation-like distribution, 85 years, no change; the record whose
-predictive level has the median true exceedance of that case). Left: exceedance curves of 120
-posterior draws (grey), their median (orange), their average, i.e.\ the predictive curve (violet),
-and the truth (black); dots mark the levels with a 1\% chance. Right: the draws' chance of
-exceeding the predictive level (log scale; draws that put it at or below $10^{-6}$ are gathered in
-the leftmost bar).}\label{fig:pred-anatomy}
+\caption{Why the posterior-predictive level lies high, in one record (gamma, precipitation-like parent, 85 years, no change; the record whose predictive level has the median true exceedance of its case). Left: chance per year that the annual maximum exceeds a given level, under each of 120 posterior draws (grey), their median (orange), their average, which is the posterior predictive curve (violet), and the truth (black); dots mark where each curve crosses 1\%. The few heavy-tailed draws dominate the average far in the tail, so the predictive curve crosses 1\% at a higher level. Right: histogram over all draws of each draw's chance of exceeding the predictive level (log scale; draws at or below $10^{-6}$ are gathered in the leftmost bar). By construction they average 1\%, but the median draw gives 0.40\%, close to the truth (0.48\%).}\label{fig:pred-anatomy}
 \end{figure}
 
 Table~\ref{tab:pred-uncertainty} summarises this over all records. The posterior is honest about its
@@ -1120,13 +1047,7 @@ determine the average is 13--21\% of the total.
 
 \begin{table}[H]
 \centering\small\setlength{\tabcolsep}{3pt}
-\caption{Uncertainty measures of the predictive level, standard cases. Left: the median over
-records of the 5th, 50th and 95th percentiles over draws of each draw's chance of exceeding the
-predictive level. \emph{Heavy-tailed}: the share of records in which more than 5\% of the draws
-have $\xi>0.5$. \emph{Truth inside}: how often the true chance lies within the draws' 25--75\% and
-5--95\% ranges. \emph{Top 5\%}: the share of the 1\% carried by the top 5\% of draws (median over
-records). \emph{Monte Carlo}: the typical error of the exceedance probability with 4,000 draws, as
-a multiplicative factor.}\label{tab:pred-uncertainty}
+\caption{How uncertain the posterior is about the risk at its own predictive level, standard cases, by design. Each posterior draw implies a chance of exceeding the predictive level; by construction these average 1\%. Draws' chance: the 5th, 50th and 95th percentiles of these over the draws (median over records). Heavy-tailed: share of records in which more than 5\% of the draws have GEV shape $\xi>0.5$ (the true $\xi$ is at most about 0.2 in our climates). Truth inside: share of records in which the true exceedance probability lies inside the draws' 25--75\% (50\%) and 5--95\% (90\%) ranges. Top 5\%: share of the 1\% average contributed by the 5\% of draws with the highest values (median over records). Monte Carlo: typical multiplicative error of the predictive level's exceedance probability with 4,000 draws, from the spread between the four chains. A typical draw puts the risk well below 1\%; a few put it at several percent.}\label{tab:pred-uncertainty}
 \input{tables/pred_uncertainty.tex}
 \end{table}
 
@@ -1142,9 +1063,7 @@ essentially no chance of being exceeded.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.75\textwidth]{figures/pred_xi.pdf}
-\caption{True chance of exceeding the predictive level against the posterior mean of the GEV
-shape $\xi$ in the final year, standard cases at 30, 45 and 85 years (one dot per record; lines:
-medians within octiles of $\xi$).}\label{fig:pred-xi}
+\caption{Records whose posterior leans towards heavy tails are overstated most. One dot per record (standard cases, 30, 45 and 85 years): the true probability that the last year's annual maximum exceeds the posterior-predictive 1-in-100-year level (log scale; ideal 1\%, grey band 0.5--2\%) against the posterior mean of the GEV shape $\xi$ in the last year (larger $\xi$: heavier tail). Lines: medians within eighths of the records sorted by $\xi$. The true $\xi$ of the annual maxima lies between about $-0.25$ and $+0.17$ in all our climates.}\label{fig:pred-xi}
 \end{figure}
 
 \paragraph{The prior.}\label{sec:pred-prior}
@@ -1184,9 +1103,7 @@ two parts, because in the no-change cases nothing is changing and the true tail 
 
 \begin{table}[H]
 \centering\small
-\caption{No-change cases only (400 records per design): true chance of exceeding the reported
-1-in-100-year level (median and 10--90th percentiles) and the share missed by more than a factor of
-2.}\label{tab:pred-null}
+\caption{Records with no change at all (the four parents, 100 records each, so 400 per design). Left: median and 10th and 90th percentiles over records of the true probability that the last year's annual maximum exceeds the posterior-predictive 1-in-100-year level (ideal 1\%). Right: share of records (\%) in which the level misses the true risk by more than a factor of 2 either way (true exceedance above 2\% or below 0.5\%), for the predictive level, the Bayesian posterior median and a location-trend fit. Tight prior: random-walk prior scales 0.25. With no change at all, the predictive level is as high and as variable as in the cases with change.}\label{tab:pred-null}
 \begin{tabular}{l rrr rrr}
 \toprule
  & \multicolumn{3}{c}{Bayes, predictive} & \multicolumn{3}{c}{Missed $>2\times$} \\
@@ -1354,9 +1271,7 @@ best based on an average over those models rather than on one of them.
 \centering
 \small
 \input{tables/cases.tex}
-\caption{Stage C cases. $\Delta X_{0.99}$: true change in the 99\% level over an 85-year record
-(baseline daily sd). ``log(shape)'' is the log of the gamma shape $a$, the $t$ degrees of freedom
-$\nu$, or the beta $\beta$; increasing it lightens the tail of the gamma and $t$.}
+\caption{Cases of the quantification study. Standard: one feature of the daily distribution changes linearly or in a step. Covariate model: the width and tail follow an accelerating mean state (for the gamma, every quantile scales with the mean). Time-driven: the same first- and last-year distributions as the covariate-model cases, reached linearly in time. Changes: mean in baseline daily sd; width as a factor; tail as the change in log(shape), the log of the gamma shape $a$, the $t$ degrees of freedom $\nu$ or the beta $\beta$ (increasing it lightens the tail of the gamma and $t$); position as the change in $\log\alpha$ of the beta. $\Delta X_{0.99}$: resulting true change in the 1-in-100-year level over an 85-year record (baseline daily sd).}
 \label{tab:cases}
 \end{table}
 
@@ -1364,18 +1279,14 @@ $\nu$, or the beta $\beta$; increasing it lightens the tail of the gamma and $t$
 \centering
 \small
 \input{tables/wrong_model_detail.tex}
-\caption{The misses of Table~\ref{tab:wrong} at 85 years, split into records with the risk
-understated (true exceedance $>2\%$) and overstated ($<0.5\%$) at least twofold. Bold: the model's
-form contains the true process.}
+\caption{The misses of Table~\ref{tab:wrong} at 85 years split by direction: share of records (\%) with the risk understated at least twofold (top: true probability of exceeding the estimated level above 2\%, so the level is too low) and overstated at least twofold (bottom: below 0.5\%, too high), by true process (rows) and fitted model (columns as in Table~\ref{tab:wrong}). Bold: the model's form contains the true process.}
 \label{tab:wrongdetail}
 \end{table}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/figA1_prior_phi.pdf}
-\caption{Left: Bayesian model with the authors' prior and with a tighter prior on the random-walk
-scales. Right: shares of 85-year records missed by more than a factor of 2 either way, with
-correlated ($\phi=0.5$) and independent daily values.}
+\caption{Left: effect of a tighter prior on the Bayesian model's random walks (scales 0.25 instead of the authors' 1, 0.5, 0.5) at 45 and 85 years: share of records whose posterior-median 1-in-100-year level understates (blue) or overstates (red) the risk at least twofold (true probability of exceeding it above 2\% or below 0.5\%); dot: authors' prior; arrow head: tighter prior. Right: share of 85-year records missed by more than a factor of 2 either way, by estimator, with correlated ($\phi=0.5$, dot) and independent (square) daily values. The tighter prior reduces understatement at 85 years; independent days make every estimator slightly worse.}
 \label{fig:prior}
 \end{figure}
 
@@ -1383,7 +1294,7 @@ correlated ($\phi=0.5$) and independent daily values.}
 
 \begin{table}[H]
 \centering\small\setlength{\tabcolsep}{3.5pt}
-\caption{As Table~\ref{tab:pred-groups}, at 30 years.}
+\caption{The posterior-predictive level at 30 years, by kind of change and by parent distribution, with the columns of Table~\ref{tab:pred-groups}: median true exceedance probability (ideal 1\%), shares (\%) understated (true exceedance above 2\%, level too low) and overstated (below 0.5\%, level too high) at least twofold, and missed; right, missed by other estimators on the same records. At 30 years the predictive level overstates the risk in 78--92\% of records in every kind of case.}
 \input{tables/pred_groups_30yr.tex}
 \end{table}
 
