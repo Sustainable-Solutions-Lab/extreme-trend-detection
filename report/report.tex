@@ -11,12 +11,13 @@
 \usepackage[hidelinks]{hyperref}
 
 \newcommand{\Xp}{X_{0.99}}
+\newcommand{\xs}{x^{*}}
 \setlength{\parskip}{0.45em}
 \setlength{\parindent}{0pt}
 
 \title{\vspace{-3.2em}Detecting and quantifying change in extremes:\\a synthetic-data test of the M\"uller--Watson methods}
 \author{Produced by Ken Caldeira with the help of Claude Code \\ \small\url{https://github.com/Sustainable-Solutions-Lab/extreme-trend-detection}}
-\date{Draft, 3 November 2026}
+\date{Draft, 4 November 2026}
 
 \begin{document}
 \maketitle
@@ -24,13 +25,14 @@
 
 \section*{Abstract}
 
-\emph{Questions and approach.} We asked three questions about the methods of M\"uller and Watson
+\emph{Questions and approach.} We asked four questions about the methods of M\"uller and Watson
 (2024) for extremes that change over time:
 \vspace{-0.6\baselineskip}
 \begin{enumerate}\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}
 \item How reliably do they detect a change?
 \item How accurately do they estimate the current 1-in-100-year level?
 \item What happens when the model of the change is wrong?
+\item How uncertain is the posterior-predictive 1-in-100-year level of their Bayesian model?
 \end{enumerate}
 \vspace{-0.4\baselineskip}
 \noindent To answer them against a known truth, we generated synthetic daily records of 30 to 150 years from
@@ -63,6 +65,14 @@ which is right is usually unknown, the record rarely shows it, and the wrong cho
 when the mean changes nonlinearly or the spread changes without the mean. Averaging the candidate
 models, weighted by how well each fits, comes close to the best single model whatever the truth.
 
+\emph{The posterior-predictive level.} Taking the 99th percentile of the Bayesian model's posterior
+predictive distribution, rather than the median of the draws' levels, gives a level that is right or
+conservative on average (true exceedance 0.8\% at 85 years, 0.4--0.6\% at 30--45 years) and rarely
+understates the risk. In a single record, however, it usually overstates the risk, often by a lot:
+its typical true exceedance is 0.4\%, 0.05\% and 0.01\% at 85, 45 and 30 years, and it misses
+twofold in 68\%, 84\% and 92\% of records. Its uncertainty comes from the short record and the
+prior, not from the computation, and it is as large in records with no change at all.
+
 \setcounter{tocdepth}{1}
 \tableofcontents
 \newpage
@@ -93,6 +103,9 @@ matter:
   random walks) or of the mean state (a covariate). Either could be physically right, and usually
   we do not know which. What is lost when the change follows one and we model it as a function of
   the other, and what can be done when we do not know?
+\item \textbf{The posterior-predictive level.} A Bayesian user who must price risk reports the
+  99th percentile of the posterior predictive distribution rather than a statistic of the
+  posterior draws. How close is that level to the truth, and where does its uncertainty come from?
 \end{enumerate}
 
 %=====================================================================================
@@ -194,8 +207,8 @@ maximum likelihood to the same records, except the Bayesian model.
   their replication scripts, we use the draws without the importance-sampling correction for the
   extended-support likelihood described in their Section~3.2.3, whose weights they report to be
   essentially 1. We
-  also report the posterior mean, and a run with a tighter prior ($\mathrm{sg}=0.25$ for all
-  three).
+  also report the posterior mean, the 99th percentile of the posterior predictive distribution
+  (Section~\ref{sec:pred}), and a run with a tighter prior ($\mathrm{sg}=0.25$ for all three).
 \end{description}
 
 \subsection{Synthetic data}
@@ -909,6 +922,311 @@ reversed posterior medians of $\Xp$ was 0.003--0.11, at most 1\% of the width of
 interval, consistent with MCMC noise.
 
 %=====================================================================================
+\section{The posterior-predictive 1-in-100-year level}\label{sec:pred}
+
+A Bayesian posterior offers a second way to state the current 1-in-100-year level. Instead of a
+statistic (median or mean) of the levels implied by the individual posterior draws, one can
+average the draws' distributions into a single posterior predictive distribution and take its
+99th percentile. We call this \emph{the predictive level}. It is a single, well-defined number, it
+is what a learner who holds the posterior should use to price a contract that pays when the level
+is exceeded, and it is the natural choice in risk applications. This section asks how
+close it is to the truth and where its uncertainty comes from. We refitted every Bayesian run of
+Section~\ref{sec:quant} with its original seeds and settings (19,700 fits), keeping the
+draws' distributions; the posterior medians and means reproduce the earlier fits to within
+$3\times10^{-6}$, so all comparisons below are on the same records and draws.
+
+\subsection{Definition}\label{sec:pred-what}
+
+
+The model gives, for each posterior draw $d=1,\dots,D$, GEV parameters
+$\theta_d(t)=(\mu_d(t),\sigma_d(t),\xi_d(t))$ for the annual maximum in year $t$. The draw's own
+99th percentile is $q_d(t)$, with $P(Y_t>q_d(t)\mid\theta_d)=1\%$. The \emph{posterior median}
+estimate is the median of the $q_d(t)$ over draws. The \emph{predictive level} $\xs(t)$ instead
+solves
+\begin{equation}
+\frac1D\sum_{d=1}^{D} P\bigl(Y_t>\xs(t)\mid\theta_d(t)\bigr)=1\%,
+\end{equation}
+the 99th percentile of the posterior predictive distribution of the year-$t$ maximum. It averages
+probabilities, not levels. Since a probability cannot go above 1 but can fall to zero, and the
+upper tail of a GEV distribution is very sensitive to $\xi$, the average is pulled up by the draws
+with the heaviest tails: in our records $\xs$ is above the posterior median in every record, and
+above the posterior mean of $q_d$ in two-thirds of records at 85 years (a tenth at 30 years;
+Figure~\ref{fig:pred-anatomy}).
+
+Throughout, the quantity studied is this predictive 99th percentile of the annual-maximum
+distribution, i.e.\ the 1-in-100-year level, in the final year of the record. A predictive
+percentile of another quantity (daily rainfall, say) works by the same mechanism, but its numbers
+will differ.
+
+\subsection{How close is the predictive level to the truth?}\label{sec:pred-close}
+
+Table~\ref{tab:pred-designs} and Figure~\ref{fig:pred-exceedance} give the main result, pooled over the
+standard cases (the four distributions with and without change).
+
+\begin{table}[H]
+\centering\small\setlength{\tabcolsep}{3.5pt}
+\caption{True chance of exceeding the reported 1-in-100-year level in the final year, standard
+cases (2,000 records per design). For the predictive level: median and average over records, and
+the shares (\%) understated ($>2\%$) and overstated ($<0.5\%$) by more than a factor of 2. Right:
+the share missed by the other estimators on the same records, and the difference predictive minus
+posterior median ($\pm$ one standard error).}\label{tab:pred-designs}
+\input{tables/pred_designs.tex}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/pred_exceedance.pdf}
+\caption{True chance of exceeding the reported 1-in-100-year level, over the records of the
+standard cases: 10--90th percentiles (thin bar), 25--75th (thick bar), median (circle) and average
+(diamond). The grey band is the factor-of-2 band around 1\%.}\label{fig:pred-exceedance}
+\end{figure}
+
+\begin{itemize}
+\item \textbf{The predictive level is usually too high.} Its median true exceedance is 0.39\% at 85
+  years, 0.05\% at 45 and 0.01\% at 30. The other estimators are centred near 1\% (medians 0.9--1.5\%).
+\item \textbf{It misses more often.} It is off by more than a factor of 2 in 68\% of records at
+  85 years, 84\% at 45 and 92\% at 30, almost always by overstating. The posterior median misses in
+  59\%, 70\% and 75\%, the location trend in 56\%, 69\% and 73\%.
+\item \textbf{The dispersion is larger, and lopsided.} At 85 years the middle 80\% of its true
+  exceedances runs from 0.015\% to 2.4\%, a factor of about 160; for the posterior median it is 0.19\%
+  to 6\%, a factor of about 30. At 30 years, a tenth of predictive levels have essentially no chance of
+  being exceeded in the simulated climate.
+\item \textbf{The level itself is not far off; the probability is.} In the precipitation-like
+  (gamma) records, the predictive 100-year depth is a median 8\% above the true depth at 85 years
+  (10--90th percentile $-6\%$ to $+25\%$), 22\% above at 45 years and 31\% above at 30. Because the
+  chance of exceedance falls steeply with depth in the far tail, an 8\% overstatement of the depth
+  becomes a factor of 2.5 in the probability.
+\item \textbf{Several values per year help, but only modestly.} Fitting the three largest
+  (declustered) values of each year instead of the annual maximum cuts the share of records whose
+  posterior leans heavy-tailed from 38\% to 14\% at 45 years and from 12\% to 8\% at 85 years
+  (Table~\ref{tab:pred-uncertainty}). The predictive level's median true exceedance rises from 0.05\% to
+  0.2\% at 45 years and from 0.4\% to 0.6\% at 85, and its share missed falls from 84\% to 78\% and
+  from 68\% to 60\%. But the other estimators gain about as much, so the predictive level still
+  misses 7--16 points more often than the posterior median.
+\end{itemize}
+
+Table~\ref{tab:pred-groups} breaks the 85-year results down by the kind of change and by distribution.
+The predictive level overstates the risk more often than it understates it in every kind of case, including no
+change at all. It does about as well as the posterior median only where the true change widens the
+distribution or makes its upper tail heavier, so that the other estimators tend to understate the
+risk: in the width cases (64\% missed, against 63\%) and when the spread and tail follow a rising
+mean (68\% against 69\%). It does worst where the tail becomes lighter (79\% missed).
+
+\begin{table}[H]
+\centering\small\setlength{\tabcolsep}{3.5pt}
+\caption{The predictive level at 85 years by kind of change and by distribution: median true
+exceedance, shares (\%) understated and overstated by more than a factor of 2, and missed; right,
+the share missed by other estimators on the same records.}\label{tab:pred-groups}
+\input{tables/pred_groups_85yr.tex}
+\end{table}
+
+\subsection{The average versus a single record}\label{sec:pred-average}
+
+The predictive level does what it is built to do on average: the true chance of exceeding it,
+averaged over records, is 0.85\% at 85 years (0.43--0.55\% at 30--45 years), the closest to 1\% of
+the estimators we tested, alongside the posterior mean; the posterior median and the
+maximum-likelihood fits average 1.6--3.7\% (diamonds in Figure~\ref{fig:pred-exceedance}).
+But the average is carried by a minority of records in which the level is too low, while in the
+typical record it is far too high.
+
+This is the familiar gap between the average and the typical value of a skewed quantity. For a
+risk taker who writes many independent contracts and cares only about the expected total, the
+average is the relevant number, and by that standard the predictive level is well calibrated or
+conservative. For a single contract, location or portfolio exposed to one climate, the typical
+record is more relevant, and there the predictive level usually implies a risk several times
+higher than the true one. Climate risks at nearby locations are strongly correlated, and a model and
+prior applied in the same way everywhere will err in the same direction everywhere, so the
+diversification that would make the average relevant is limited.
+
+A Bayesian predictive distribution is calibrated in this average sense when the true climates are
+drawn from the prior. Our synthetic climates are not drawn from the authors' prior: the GEV shape
+of their annual maxima is at most about 0.2 (the Student-$t$ case), whereas the prior allows $\xi$
+up to 2.1, and above $\xi=1$ even the mean of the distribution is infinite. To the extent that real
+rainfall extremes have lighter tails than the prior allows, the same overstatement should be
+expected in real records.
+
+\subsection{Pricing cover with a known 1\% risk}\label{sec:pred-price}
+
+Figure~\ref{fig:pred-price} turns the question around: for the level whose true chance of being
+exceeded is exactly 1\% in the final year, what chance does each model assign? That chance is the
+pure premium rate the model would charge for cover triggered at that level.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/pred_price.pdf}
+\caption{Each model's chance of exceeding the true 1-in-100-year level of the final year, over the
+records of the standard cases (percentiles as in Figure~\ref{fig:pred-exceedance}). The grey band is a
+factor of 2 around the true 1\%.}\label{fig:pred-price}
+\end{figure}
+
+\begin{itemize}
+\item \textbf{The predictive model charges too much, but rarely too little.} Its median rate is 1.7\%
+  at 85 years, 2.8\% at 45 and 3.2\% at 30. It charges less than 0.5\% in only 4--10\% of records
+  and less than 0.1\% almost never; it charges more than 2\% in 40\% of records at 85 years and in
+  67--72\% at 30--45 years.
+\item \textbf{A trend fit is right on average but often dangerously low.} The location-trend
+  maximum-likelihood fit has a median rate of 0.7--0.9\%, but charges less than 0.5\% in 36--45\% of
+  records and less than 0.1\% in 16--28\%: in those records the cover would be priced at a tenth or
+  less of its true cost.
+\item The predictive approach therefore trades frequent and large over-pricing for protection
+  against severe under-pricing. Whether that is a good trade is a question about risk preferences;
+  the point here is that the loading it implies is large, varies by a factor of several from one
+  record to the next, and is set mainly by the prior (Section~\ref{sec:pred-prior}).
+\end{itemize}
+
+\subsection{Where the uncertainty comes from}\label{sec:pred-sources}
+
+\paragraph{The posterior's own spread.}
+
+Figure~\ref{fig:pred-anatomy} shows one typical precipitation-like record of 85 years with no change.
+Left: each grey curve is the chance of exceeding a given level under one posterior draw. The draws
+fan out in the tail. The predictive curve (violet) is their average; it lies above most of the
+draws because the few heavy-tailed ones dominate the average in the far tail. Right: the
+distribution over draws of the chance of exceeding the predictive level. By construction it
+averages 1\%, but the median draw gives 0.40\%, close to the truth (0.48\%), and the top 5\% of
+draws carry a third of the average.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/pred_anatomy.pdf}
+\caption{One record (precipitation-like distribution, 85 years, no change; the record whose
+predictive level has the median true exceedance of that case). Left: exceedance curves of 120
+posterior draws (grey), their median (orange), their average, i.e.\ the predictive curve (violet),
+and the truth (black); dots mark the levels with a 1\% chance. Right: the draws' chance of
+exceeding the predictive level (log scale; draws that put it at or below $10^{-6}$ are gathered in
+the leftmost bar).}\label{fig:pred-anatomy}
+\end{figure}
+
+Table~\ref{tab:pred-uncertainty} summarises this over all records. The posterior is honest about its
+uncertainty: the true chance lies within the draws' 5--95\% range in 96--100\% of records. But the
+range is very wide, from essentially 0 to about 5\%, so the single number hides a very wide spread
+of beliefs. ``Dominated by a few draws'' is accurate in a specific sense: the top 5\% of draws
+carry 38\% (85 years) to 52\% (30 years) of the 1\%, and the effective number of draws that
+determine the average is 13--21\% of the total.
+
+\begin{table}[H]
+\centering\small\setlength{\tabcolsep}{3pt}
+\caption{Uncertainty measures of the predictive level, standard cases. Left: the median over
+records of the 5th, 50th and 95th percentiles over draws of each draw's chance of exceeding the
+predictive level. \emph{Heavy-tailed}: the share of records in which more than 5\% of the draws
+have $\xi>0.5$. \emph{Truth inside}: how often the true chance lies within the draws' 25--75\% and
+5--95\% ranges. \emph{Top 5\%}: the share of the 1\% carried by the top 5\% of draws (median over
+records). \emph{Monte Carlo}: the typical error of the exceedance probability with 4,000 draws, as
+a multiplicative factor.}\label{tab:pred-uncertainty}
+\input{tables/pred_uncertainty.tex}
+\end{table}
+
+\paragraph{The tail shape.}
+
+Which records are overstated most? Those whose posterior leans towards heavy tails
+(Figure~\ref{fig:pred-xi}). The true GEV shape of the annual maxima in our climates ranges from about
+$-0.25$ (bounded) to about $+0.17$ (Student-$t$); with 30--45 years of data the posterior mean of $\xi$
+is often well above that, and every positive shift in $\xi$ raises the predictive level steeply.
+At 30 years, records with a posterior mean $\xi$ above about 0.2 have predictive levels with
+essentially no chance of being exceeded.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/pred_xi.pdf}
+\caption{True chance of exceeding the predictive level against the posterior mean of the GEV
+shape $\xi$ in the final year, standard cases at 30, 45 and 85 years (one dot per record; lines:
+medians within octiles of $\xi$).}\label{fig:pred-xi}
+\end{figure}
+
+\paragraph{The prior.}\label{sec:pred-prior}
+
+The predictive level is ``unique'' only for a given prior, and the prior matters a great deal.
+Shrinking the prior scales of the random walks from the authors' values (1, 0.5, 0.5) to 0.25
+changes nothing about the data, but:
+\begin{itemize}
+\item at 85 years the share missed falls from 68\% to 57\% (now within 1 point of the posterior
+  median and the location trend), and the median true exceedance rises from 0.39\% to 0.64\%;
+\item at 45 years the share missed falls from 84\% to 74\% and the median true exceedance rises from
+  0.05\% to 0.24\%; record by record the true exceedance of the predictive level rises by a median
+  factor of 2.8 (85 years: 1.6);
+\item in the cases where the spread and tail follow a rising mean, at 85 years, the predictive level
+  with the tight prior becomes the best estimator we tested, missing in 55\% of records against 64\%
+  for the Akaike-weighted average and 69\% for the posterior median.
+\end{itemize}
+We varied only the random-walk scales. The prior on $\xi$ itself, and its upper limit of 2.1, are
+likely to matter as much, because the overstatement comes from heavy-tailed draws.
+
+\paragraph{Monte Carlo error.}
+
+Splitting each fit's 4,000 draws into its four chains, the predictive level's chance of being
+exceeded changes by a typical factor of 1.06 at 85 years and 1.10--1.11 at 30--45 years (90th
+percentile 1.16--1.55). With the authors' 40,000 draws these factors would shrink by about
+$\sqrt{10}$. Monte Carlo error accounts for well under 1\% of the variance of the error in the
+log exceedance probability (0.03--0.11\%): the dominance of a few draws is a property of the posterior, not of
+the number of draws.
+
+\subsection{Ambiguity in the climate, or in the inference?}\label{sec:pred-ambiguity}
+
+One argument for the predictive approach is that possible non-stationarity, combined with possibly
+long tails, makes the climate distribution genuinely ambiguous, and that the high and volatile
+estimates of catastrophic risk reflect that ambiguity. The synthetic records let us separate the
+two parts, because in the no-change cases nothing is changing and the true tail is at most moderately heavy
+($\xi\lesssim0.2$):
+
+\begin{table}[H]
+\centering\small
+\caption{No-change cases only (400 records per design): true chance of exceeding the reported
+1-in-100-year level (median and 10--90th percentiles) and the share missed by more than a factor of
+2.}\label{tab:pred-null}
+\begin{tabular}{l rrr rrr}
+\toprule
+ & \multicolumn{3}{c}{Bayes, predictive} & \multicolumn{3}{c}{Missed $>2\times$} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Design & median & 10\% & 90\% & predictive & post.\ median & loc.\ trend \\
+\midrule
+30 yr & 0.02\% & 0.00\% & 1.35\% & 89 & 73 & 73 \\
+45 yr & 0.08\% & 0.00\% & 1.46\% & 80 & 65 & 66 \\
+85 yr & 0.47\% & 0.04\% & 2.31\% & 64 & 53 & 49 \\
+85 yr, tight prior & 0.68\% & 0.12\% & 2.30\% & 52 & 48 & 49 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+With no change at all, the predictive level is as high and as dispersed as in the cases with
+change. So most of the ambiguity is produced by the inference: a few decades of annual maxima
+cannot rule out a heavy tail, the prior allows one, and averaging probabilities over the posterior
+turns that possibility into a high level. That is a legitimate feature of a Bayesian learner's
+beliefs, and it is real ambiguity for someone who must act on a short record. But it would be
+present in a stationary climate, it shrinks with record length roughly as the tail becomes
+identifiable, and its size is governed by prior choices that the data cannot check. It is not, by
+itself, evidence that the climate's extremes are changing or are heavy-tailed.
+
+\subsection{Suggestions for practice}\label{sec:pred-suggest}
+
+\begin{enumerate}
+\item \textbf{Report the spread of beliefs, not only the average.} Alongside the predictive level,
+  report the posterior distribution of the chance of exceeding it, for example the median draw and
+  a 90\% range (in our records typically $\sim$0.2\% and 0--5\% at 85 years). That makes clear that
+  ``1\%'' is an average over beliefs ranging from negligible to several times the target.
+\item \textbf{Show prior sensitivity.} Refit with tighter random-walk scales and a more
+  informative prior on $\xi$ (or a lower upper bound), and report how the level and the implied
+  premium move. In our records, the random-walk scales alone change the typical true exceedance
+  by a factor of 1.6 (85 years) to 2.8 (45 years).
+\item \textbf{Benchmark against a stationary climate.} Fit the model to synthetic stationary
+  records of the same length and similar distribution. The spread of predictive levels obtained
+  there is the ambiguity that comes from the inference alone.
+\item \textbf{Compare with simple fits.} If the predictive level is far above both a constant and a
+  trend maximum-likelihood fit, the difference comes from the posterior's heavy-tailed draws, and
+  should be justified on other grounds (physical or regional knowledge of the tail).
+\item \textbf{Bring in more information on the tail.} Pooling the shape parameter across nearby
+  stations (regional frequency analysis), or using several values per year, constrains $\xi$
+  better than a single annual-maximum record, and the overstatement shrinks as $\xi$ is pinned down.
+  In our records, three values per year from 45 years constrained $\xi$ about as well as 85 years
+  of annual maxima, but the predictive level still missed in 78\% of records against 68\%; at
+  85 years it did slightly less than the tight prior (60\% missed against 57\%). Pooling across
+  stations is likely to do more.
+\item \textbf{Separate the risk margin from the estimate.} The predictive approach builds a loading
+  for ambiguity into the estimate through the prior. If a margin for ambiguity is wanted, it may be
+  clearer to estimate the risk with a well-calibrated central estimate and add an explicit,
+  stated margin, so that the margin is a decision rather than a by-product of the prior.
+\end{enumerate}
+
+%=====================================================================================
 \section{Limitations}
 
 \begin{itemize}
@@ -925,6 +1243,10 @@ interval, consistent with MCMC noise.
 \item Our MCMC runs are shorter than the authors' (4 $\times$ 1,000 against 4 $\times$ 10,000
   draws). The accuracy of point estimates and interval coverage should be robust to this; the
   convergence failures with three values per year are not a matter of chain length.
+\item We scored the final year of each record (a ``nowcast''); a forecast for future years would
+  add the uncertainty of extrapolating the random walks. For the Bayesian model we varied only the
+  random-walk scales of the prior, not the prior on $\xi$ or its upper limit of 2.1, which matter
+  for the predictive level (Section~\ref{sec:pred}).
 \item We have not yet run the paper's joint $L^*$ test, the exceedance (threshold) versions of
   the tests, or the Bayes factors that compare ``more events'' with ``a shifted distribution''.
 \end{itemize}
@@ -973,6 +1295,17 @@ and of the no-change floor.
 erring more often toward understatement. It shrinks estimated changes toward zero, and its 90\%
 credible intervals, while they cover the truth, are 1.3 to 3 times wider than the actual errors.
 With three values per year, 10--12\% of its fits fail to converge under the authors' prior.
+
+\emph{The posterior-predictive level.} The 99th percentile of the Bayesian posterior predictive
+distribution averages probabilities over the draws, so it is pulled up by the few draws with the
+heaviest tails. On average over records it is about right or conservative (true exceedance 0.8\%
+at 85 years, 0.4--0.6\% at 30--45), and it understates the risk twofold in only 6--13\% of records.
+In a single record it usually overstates the risk: it misses twofold in 68\%, 84\% and 92\% of
+records at 85, 45 and 30 years, 9 to 19 points more often than the posterior median or a trend fit.
+As a pure premium rate for cover with a true 1\% risk it charges a median 1.7--3.2\%. It is as high
+and as dispersed with no change at all, and a tighter prior on the random walks brings it close to
+the posterior median; most of its ambiguity is therefore produced by the inference (a heavy tail
+that a short record cannot rule out and the prior allows), not by the climate.
 
 \emph{Using the wrong driving variable.} Which model is right depends on the physical process, and
 our tests show what happens when the model is wrong. We compared models of the same complexity that
@@ -1031,6 +1364,14 @@ scales. Right: shares of 85-year records missed by more than a factor of 2 eithe
 correlated ($\phi=0.5$) and independent daily values.}
 \label{fig:prior}
 \end{figure}
+
+\section{The posterior-predictive level at 30 years by kind of change}
+
+\begin{table}[H]
+\centering\small\setlength{\tabcolsep}{3.5pt}
+\caption{As Table~\ref{tab:pred-groups}, at 30 years.}
+\input{tables/pred_groups_30yr.tex}
+\end{table}
 
 \section*{References}
 \begin{list}{}{\leftmargin=1.5em \itemindent=-1.5em \itemsep=0.2em}

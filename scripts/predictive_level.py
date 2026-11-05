@@ -1,4 +1,4 @@
-"""Figures, tables and numbers for the note on the posterior predictive 99% level.
+"""Figures, tables and numbers for the posterior-predictive 99% level section of the report.
 
 The posterior predictive p-quantile integrates the posterior over the GEV parameters first and
 takes the quantile of the resulting (mixture) distribution, instead of taking a statistic (median,
@@ -12,7 +12,7 @@ Writes:
 * data/results/predictive_uncertainty.csv: uncertainty measures of the predictive level by design
 * report/figures/pred_*.pdf, report/tables/pred_*.tex
 
-Example: python scripts/predictive_note.py --png /tmp/previews
+Example: python scripts/predictive_level.py --png /tmp/previews
 """
 
 import os

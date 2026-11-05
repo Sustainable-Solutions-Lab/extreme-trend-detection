@@ -11,8 +11,9 @@ series from known parent distributions (Stage B, detection), and estimates of th
 (Stage C, quantification). Applying them to ERA5 climate variables comes next.
 
 **Report:** [`report/report.pdf`](report/report.pdf) (source `report/report.tex`, figures and
-tables built by `scripts/make_figures.py`) summarizes the pseudo-data results: how well change is
-detected, and how well the current 99% annual-maximum level and its change are estimated.
+tables built by `scripts/make_figures.py` and `scripts/predictive_level.py`) summarizes the
+pseudo-data results: how well change is detected, how well the current 99% annual-maximum level and
+its change are estimated, and how uncertain the Bayesian model's posterior-predictive 99% level is.
 
 ## The method in brief
 
@@ -67,9 +68,11 @@ scripts/
   import_mw2024_cvs.py copy the authors' coefficients into data/calibration
   power_study.py       run the Stage A power study and write data/results/power_summary.csv
   stage_b.py           run Stage B and write data/results/stage_b_*.csv
-  stage_c.py           run Stage C and write data/results/stage_c_summary.csv
+  stage_c.py           run Stage C and write data/results/stage_c_summary.csv; --replay refits the
+                       saved Bayesian runs and adds posterior-predictive quantiles
   stage_c_reversal.py  time-reversal check of the Bayesian model
   make_figures.py      report figures and tables, data/results/stage_c_headline.csv
+  predictive_level.py  posterior-predictive level section: figures, tables, data/results/predictive_*.csv
 report/                report.tex, report.pdf, figures/, tables/ (LaTeX; build with latexmk -pdf)
 tests/
   test_likelihood.py       self-contained checks (scipy cross-checks, normalization, scores, simulation)
