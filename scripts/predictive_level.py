@@ -3,8 +3,9 @@
 The posterior predictive p-quantile integrates the posterior over the GEV parameters first and
 takes the quantile of the resulting (mixture) distribution, instead of taking a statistic (median,
 mean) of the draws' own quantiles. This script scores it against the known truth in the Stage C
-records refitted by ``scripts/stage_c.py --replay`` (data/output/stage_c_pred), and measures where
-its uncertainty comes from.
+records, and measures where its uncertainty comes from. It reads the predictive quantiles from
+data/output/stage_c_pred when that exists (written by ``scripts/stage_c.py --replay``, which refits
+Stage C runs made before the quantiles were added) and otherwise from data/output/stage_c.
 
 Writes:
 * data/output/report/pred_records.pkl: one row per (design, case, estimator, record)
@@ -67,7 +68,11 @@ def scenario_list(dkw):
 
 
 def pred_path(family, ch, T=85, k=1, phi=0.5, r=0, prior="mw"):
-    return PRED / mf.scenario_path(family, ch, T, k, phi, r, prior).name
+    """The scenario's file with posterior predictive quantiles: the --replay output if there is
+    one, otherwise the Stage C file itself (fits run since the predictive quantiles were added
+    store them directly)."""
+    path = mf.scenario_path(family, ch, T, k, phi, r, prior)
+    return PRED / path.name if (PRED / path.name).exists() else path
 
 
 def records():
@@ -80,6 +85,8 @@ def records():
             if not path.exists():
                 continue
             res = stage_c.load(path)
+            if res.pred_q is None:
+                continue
             extra = stage_c.extra_estimates(res, workers=1, cache_dir=OUT_C)
             m, s, tail = pa.parameter_paths(family, ch, T)
             tl = None if tail is None else np.asarray(tail)[-1]

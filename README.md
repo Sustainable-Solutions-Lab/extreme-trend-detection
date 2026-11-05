@@ -104,9 +104,13 @@ external/         authors' replication archive (not in git; see below)
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -e '.[dev]'
+.venv/bin/pip install -e '.[dev,stan,report]'
+.venv/bin/python -c "import cmdstanpy; cmdstanpy.install_cmdstan()"   # Stage C only
 .venv/bin/python -m pytest
 ```
+
+The results in the report were produced with Python 3.10, CmdStan 2.40.0 (cmdstanpy 1.3) and
+TeX Live 2026 (`latexmk`, `pdflatex`).
 
 ### Authors' replication files
 
@@ -145,6 +149,106 @@ normalized), largest and smallest S&P 500 returns, and city and firm sizes with 
 - the ξ̂-adjusted LR statistics for µ = σ/ξ and for Zipf's law match to their printed 2 decimals
 
 The critical-value coefficients for these checks come from the authors' CSV files.
+
+## Reproducing the results
+
+There are two levels. **Rebuilding the report** from the saved simulation outputs takes about five
+minutes. **Redoing the calculations** from scratch takes about two days on 14 cores. Run everything
+from the repository root. Every script lowers its own priority (`--nice 19` by default) and caps
+each worker at one maths-library thread. Seeds are fixed by default, so a re-run should give the
+same numbers up to Monte Carlo and compiler noise (a refit of every Stan model reproduced the
+posterior medians to within 3e-6).
+
+### What is in git and what is not
+
+- **In git:** the code, the critical-value tables (`data/calibration/`), the summary tables
+  (`data/results/`), and the report's source, figures, tables and PDF (`report/`).
+- **Not in git:** the per-record simulation outputs in `data/output/` (about 1.7 GB). The report
+  figures need them, so someone with only a clone can rebuild the PDF from the committed figures
+  (step 7 alone), but must redo steps 1–6 before regenerating the figures and tables.
+
+### Steps
+
+1. **Set up** (see Setup above), and download the authors' archive into
+   `external/muller-watson-2024/files` (see "Authors' replication files").
+
+2. **Import the authors' critical-value coefficients** into `data/calibration`:
+
+   ```bash
+   .venv/bin/python scripts/import_mw2024_cvs.py
+   ```
+
+3. **Calibrate our own critical values** (about 5 hours in all). Each call appends rows to
+   `data/calibration/cv_adjustment.csv` and `cv_xi.csv`.
+
+   ```bash
+   C="nice -n 19 .venv/bin/python scripts/calibrate_cv.py --seed 2026"
+   # the paper's applications: returns (k = 1, T = 194) and city/firm sizes (k = 30, T = 4)
+   $C --k 1  --T 194 --N 40000 --tests nyblom xi q90 pareto zipf --validate-seed 7
+   $C --k 30 --T 4   --N 40000 --tests nyblom xi q90 pareto zipf --validate-seed 7
+   # Nyblom test for the pseudo-data designs
+   for kT in "1 30" "1 45" "1 85" "1 150" "3 30" "3 45" "3 85" "3 150" "10 85"; do
+     set -- $kT; $C --k $1 --T $2 --N 40000 --tests nyblom --validate-seed 7
+   done
+   # two-segment (split) test for the same designs
+   for kT in "1 30" "1 45" "1 85" "1 150" "3 30" "3 45" "3 85" "3 150" "10 85"; do
+     set -- $kT; $C --k $1 --T $2 --N 20000 --tests split
+   done
+   ```
+
+4. **Stage A, power on exact GEV data**. This writes `data/results/power_summary.csv`.
+
+   ```bash
+   .venv/bin/python scripts/power_study.py --designs 1x85 3x85 10x85 1x194 30x4 \
+     --xi0 -0.2 0 0.2 0.5 --N 2000
+   ```
+
+5. **Stage B, detection with daily data** (about 9 hours). This writes
+   `data/results/stage_b_summary.csv` and `stage_b_return_levels.csv`.
+
+   ```bash
+   B=".venv/bin/python scripts/stage_b.py"
+   $B --designs 1:0 3:0 --T 85 --phi 0 0.5 0.8
+   $B --designs 1:0 3:0 --T 30 45 150 --phi 0.5
+   $B --designs 10:0 10:3 --T 85 --phi 0.8
+   ```
+
+6. **Stage C, estimating the 99% level** (about 21 hours). This fits the Bayesian model and the
+   maximum-likelihood estimators to 100 records per case and writes
+   `data/results/stage_c_summary.csv`. Each fit also stores the posterior predictive quantiles
+   used in Section 7 of the report. All runs use 100 records and seed 3, the defaults.
+
+   ```bash
+   S=".venv/bin/python scripts/stage_c.py --skip-existing"
+   $S --T 30 45 85                          # standard cases
+   $S --T 30 45 85 --coupled                # covariate-model cases
+   $S --T 30 45 85 --time-driven            # their time-driven counterparts
+   $S --T 85 --phi 0                        # independent days
+   $S --k 3 --r 3 --T 45 85                 # three values per year, declustered
+   $S --T 45 85 --prior tight               # tighter random-walk prior
+   $S --T 85 --prior tight --coupled
+   .venv/bin/python scripts/stage_c_reversal.py   # time-reversal check (prints its result)
+   ```
+
+   `scripts/stage_c.py --replay` refits saved Stage C runs to add the predictive quantiles. It was
+   needed only because the original runs predate them; a fresh run does not need it.
+
+7. **Rebuild the report** (about five minutes). The two scripts read `data/output/stage_c` (and
+   `data/output/stage_c_pred` if present) and the summary tables. They write
+   `report/figures/`, `report/tables/`, `data/results/stage_c_headline.csv` and
+   `data/results/predictive_*.csv`.
+
+   ```bash
+   nice -n 19 .venv/bin/python scripts/make_figures.py
+   nice -n 19 .venv/bin/python scripts/predictive_level.py
+   cd report && latexmk -pdf report.tex
+   ```
+
+   Numbers quoted in the report's text (as opposed to its figures and tables) were written by
+   hand from these outputs. `predictive_level.py` prints those of Section 7.
+
+   A rebuild on 5 November 2026 from the saved outputs reproduced every table and summary CSV
+   byte for byte, every figure pixel for pixel, and the text of every page of the PDF.
 
 ## Critical values
 
